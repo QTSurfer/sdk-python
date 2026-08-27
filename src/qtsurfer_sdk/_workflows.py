@@ -180,19 +180,21 @@ def execute(
 def backtest_result(session: AuthenticatedSession, *, exchange_id: str, type_: str, job_id: str):
     """Read an execution's result state/metrics.
 
-    Returns the raw parsed HTTP ``Response`` (via ``sync_detailed``) rather
-    than the error-prone ``sync`` value. The generated ``sync`` tries to
-    deserialize ``results`` even while a job is still ``202``-running (a
-    partially-populated body) and can KeyError on fields like
-    ``strategyId``; ``sync_detailed`` hands that decision to the caller's
-    poll loop, which should key off the HTTP status + ``state.status``.
+    Returns a raw ``httpx.Response`` (JSON) rather than the generated
+    ``sync``/``sync_detailed`` value. The generated parser calls
+    ``ResultMap.from_dict`` even while a job is still ``202``-running — the
+    partial ``results`` body lacks fields (e.g. ``strategyId``) and the
+    parser raises ``KeyError``. Raw httpx keeps the ``202``/``200`` +
+    ``state.status`` decision in the caller's poll loop, where it belongs.
     """
-    from qtsurfer.api.client._generated.api.backtesting import get_backtest_result
+    from qtsurfer.api.client._generated.api.backtesting import get_backtest_result  # noqa: F401
 
+    httpx_client = session.client.get_httpx_client()
     ds = DataSourceType(type_)
-    return session.call(
-        lambda c: get_backtest_result.sync_detailed(exchange_id, ds, job_id, client=c)
-    )
+    ds = ds.value if hasattr(ds, "value") else str(ds)
+    url = f"{session.base_url}/backtest/{exchange_id}/{ds}/execute/{job_id}"
+    resp = session.call(lambda c: httpx_client.get(url))
+    return resp
 
 
 def cancel_backtest(session: AuthenticatedSession, *, exchange_id: str, type_: str, job_id: str):

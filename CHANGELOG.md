@@ -23,12 +23,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
     `delete_dataset`, `finalize_upload`, `dataset_upload`.
 - Error hierarchy parity: `QTSCompileError`, `QTSPreparationError`,
   `QTSExecutionError`, `QTSTimeoutError`, `QTSCanceledError`, `QTSDownloadError`.
-- `backtest_result` returns `sync_detailed` so poll loops can handle the
-  `202`-running state without the generated `sync` KeyError'ing on partial
-  results.
+- `backtest_result` returns a raw `httpx.Response` (not the generated
+  `sync` value), so poll loops can handle the `202`-running state without
+  the generated parser KeyError'ing on a partially-populated `results`
+  body (missing `strategyId` while running).
 
 ### Changed
 
+- Workflows exposed as methods on `AuthenticatedSession`
+  (`session.exchanges()`, `session.prepare(...)`, `session.backtest_result(...)`,
+  ...) in addition to the `_workflows` module functions — parity with the
+  Java/TS SDK `AuthenticatedClient` surface.
+- README rewritten to document the full workflow surface with reproducible
+  examples.
 - Dependency pinned to `qtsurfer-api-client==0.110.3` (OpenAPI spec 0.110.3;
   adds the Dataset feature and dataset-backed prepare/execute).
 - `import` fixed for the generated auth endpoint moved to
