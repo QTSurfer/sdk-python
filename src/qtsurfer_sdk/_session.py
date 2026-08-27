@@ -12,10 +12,13 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import Callable, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 from qtsurfer.api.client._generated import AuthenticatedClient as _GenAuthClient
-from qtsurfer.api.client._generated.api.auth import auth as _auth_api
+from qtsurfer.api.client._generated.api.auth.authenticate import (
+    sync_detailed as _auth_sync_detailed,
+)
 from qtsurfer.api.client._generated.models import AuthTokenError, AuthTokenResponse
 from qtsurfer.api.client._generated.types import Response
 
@@ -89,7 +92,7 @@ class AuthenticatedSession:
         with self._lock:
             resp: Response[
                 AuthTokenResponse | AuthTokenError | None
-            ] = _auth_api.sync_detailed(client=self._mint_client)
+            ] = _auth_sync_detailed(client=self._mint_client)
             if resp.status_code != 200 or not isinstance(resp.parsed, AuthTokenResponse):
                 raise QTSAuthError(
                     f"auth() failed: HTTP {resp.status_code}",

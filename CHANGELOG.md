@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-27
+
+### Added
+
+- High-level workflow surface over `qtsurfer-api-client`, parity with the Java /
+  TypeScript SDKs (module `qtsurfer_sdk._workflows`):
+  - Strategy: `compile_strategy`, `validate_strategy`, `strategy_state`,
+    `list_strategies`, `delete_strategy`, `get_strategy_code`.
+  - Catalog: `exchanges`, `instruments` (with optional segment).
+  - Backtest: `prepare`, `prepare_status`, `execute`, `backtest_result`,
+    `cancel_backtest`.
+  - Sweep: `sweep`, `sweep_result`, `sweep_sensitivity`,
+    `sweep_run_equity_curve`, `cancel_sweep`.
+  - Dataset: `create_dataset`, `list_datasets`, `get_dataset`,
+    `delete_dataset`, `finalize_upload`, `dataset_upload`.
+- Error hierarchy parity: `QTSCompileError`, `QTSPreparationError`,
+  `QTSExecutionError`, `QTSTimeoutError`, `QTSCanceledError`, `QTSDownloadError`.
+- `backtest_result` returns `sync_detailed` so poll loops can handle the
+  `202`-running state without the generated `sync` KeyError'ing on partial
+  results.
+
+### Changed
+
+- Dependency pinned to `qtsurfer-api-client==0.110.3` (OpenAPI spec 0.110.3;
+  adds the Dataset feature and dataset-backed prepare/execute).
+- `import` fixed for the generated auth endpoint moved to
+  `qtsurfer.api.client._generated.api.auth.authenticate` in 0.110.3.
+
+### Fixed
+
+- `AuthenticatedSession` now imports the auth operation from its new module
+  path, restoring `auth()` against `qtsurfer-api-client` 0.110.x.
+
 ## [0.1.0] — 2026-05-25
 
 ### Added

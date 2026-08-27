@@ -16,8 +16,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
 import pytest
-
 from qtsurfer.api.client._generated.models import AuthTokenResponse
+
 from qtsurfer_sdk import QTSAuthError, auth
 
 
