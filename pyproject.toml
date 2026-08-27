@@ -1,7 +1,7 @@
 [project]
 name = "qtsurfer-sdk"
-version = "0.1.0"
-description = "Opinionated Python SDK for QTSurfer — auth helper with refresh, pluggable token storage, and one-call setup over qtsurfer-api-client."
+version = "0.2.0"
+description = "Opinionated Python SDK for QTSurfer — auth helper with refresh, pluggable token storage, and high-level workflows (strategies, backtest, sweep, datasets) over qtsurfer-api-client."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -24,7 +24,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "qtsurfer-api-client>=0.95.1,<1",
+    "qtsurfer-api-client==0.110.3",
     "httpx>=0.23,<1",
 ]
 

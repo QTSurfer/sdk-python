@@ -43,3 +43,27 @@ class QTSAuthError(QTSError):
       revoked / expired apikey).
     * The endpoint returned a 2xx but the body was empty or undecodeable.
     """
+
+
+class QTSCompileError(QTSError):
+    """Raised when ``POST /strategy`` cannot compile/register a strategy."""
+
+
+class QTSPreparationError(QTSError):
+    """Raised when preparing market data (``prepare_backtest``) fails."""
+
+
+class QTSExecutionError(QTSError):
+    """Raised when a backtest/sweep execution fails or errors mid-run."""
+
+
+class QTSTimeoutError(QTSError):
+    """Raised when a poll loop reaches its deadline before a job resolves."""
+
+
+class QTSCanceledError(QTSError):
+    """Raised when an in-flight run is canceled (or the caller aborts)."""
+
+
+class QTSDownloadError(QTSError):
+    """Raised when downloading tickers/klines fails."""

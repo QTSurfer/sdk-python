@@ -16,17 +16,15 @@ from __future__ import annotations
 import os
 
 import pytest
-
 from qtsurfer.api.client._generated.models import AuthTokenResponse
+
 from qtsurfer_sdk import (
     APIKEY_ENV_VAR,
-    AuthenticatedSession,
     InMemoryTokenStore,
     QTSAuthError,
     auth,
 )
 from qtsurfer_sdk._session import _resolve_apikey
-
 
 # ---- Fixtures ----------------------------------------------------------------
 
