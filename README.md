@@ -61,8 +61,8 @@ typed model objects.
 ```python
 src = '''public class EmaCross extends AbstractTickerStrategy { ... }'''
 
-comp = session.compile_strategy(src)       # {"strategyId": "...", "declaredProperties": [...]}
-sid = comp["strategyId"]
+comp = session.compile_strategy(src)       # CompileStrategyResponse200
+sid = comp.strategy_id
 
 session.validate_strategy(sid)             # 202/pending or already-recorded verdict
 state = session.strategy_state(sid)        # validation, notices, requiredSources
@@ -104,9 +104,15 @@ ex = session.execute(
 )
 jid = ex.job_id
 
-# 4. poll the result (202-while-running; read state.status + results when 200)
-resp = session.backtest_result(exchange_id="binance", type_="ticker", job_id=jid)
-results = resp.parsed.results          # pnl, totalTrades, sharpeRatio, equityCurve...
+# 4. poll the raw result (202 while running; parse results only on 200)
+while True:
+    resp = session.backtest_result(exchange_id="binance", type_="ticker", job_id=jid)
+    if resp.status_code == 202:
+        time.sleep(3)
+        continue
+    resp.raise_for_status()
+    results = resp.json()["results"]  # pnl, totalTrades, sharpeRatio, equityCurve...
+    break
 ```
 
 ### Sweep
@@ -140,7 +146,10 @@ session.finalize_upload(dataset_id=created.dataset_id, upload_id=created.upload_
 # poll:
 state = session.dataset_upload(dataset_id=created.dataset_id, upload_id=created.upload_id)
 # state.status == "ready" -> backtest against it with exchange_id="user":
-acc = session.prepare(exchange_id="user", type_="ticker", dataset_id=created.dataset_id, from_=..., to=...)
+acc = session.prepare(
+    exchange_id="user", type_="ticker", dataset_id=created.dataset_id,
+    dataset_version_id=state.version.id, from_=..., to=...,
+)
 
 session.list_datasets()
 session.get_dataset(dataset_id)
