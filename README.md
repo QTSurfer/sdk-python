@@ -17,6 +17,17 @@ key to a typed backtest in a few lines.
 > The strategy code itself stays on the JVM — QTSurfer's backtest engine is Java.
 > This SDK is for orchestration: minting tokens, calling endpoints, processing results.
 
+## Guides
+
+The hand-written guides mirror the SDK family structure.
+
+- [Authentication](docs/auth.md)
+- [Exchanges and instruments](docs/exchange.md)
+- [Strategies and validation](docs/strategy.md)
+- [Backtests and parameter sweeps](docs/backtesting.md)
+- [Dataset uploads](docs/datasets.md)
+- [API coverage](docs/api-coverage.md)
+
 ## Installation
 
 ```bash
@@ -43,7 +54,7 @@ session = auth()
 # Or point at a different API base (defaults to production):
 # session = auth("ak_...", base_url="https://api.qtsurfer.net/v1")
 
-exchanges = session.exchanges()
+exchanges = session.list_exchanges()
 for ex in exchanges:
     print(ex.id, ex.name)
 ```
@@ -65,7 +76,7 @@ comp = session.compile_strategy(src)       # CompileStrategyResponse200
 sid = comp.strategy_id
 
 session.validate_strategy(sid)             # 202/pending or already-recorded verdict
-state = session.strategy_state(sid)        # validation, notices, requiredSources
+state = session.get_strategy(sid)          # validation, notices, requiredSources
 session.list_strategies()                  # your registered strategies
 code = session.get_strategy_code(sid)      # read back the exact source
 session.delete_strategy(sid)               # release it
@@ -74,9 +85,9 @@ session.delete_strategy(sid)               # release it
 ### Catalog
 
 ```python
-session.exchanges()                                   # [Exchange, ...]
-session.instruments("binance")                        # 1876 instruments
-session.instruments("binance", segment="spot")        # a specific segment
+session.list_exchanges()                              # [Exchange, ...]
+session.list_instruments("binance")                   # 1876 instruments
+session.list_instruments("binance", segment="spot")   # a specific segment
 ```
 
 ### Backtest
@@ -92,7 +103,7 @@ pid = acc.job_id
 # 2. poll until Completed
 import time
 while True:
-    st = session.prepare_status(exchange_id="binance", type_="ticker", job_id=pid)
+    st = session.get_prepare_status(exchange_id="binance", type_="ticker", job_id=pid)
     if st.status == "Completed":
         break
     time.sleep(3)
@@ -106,7 +117,7 @@ jid = ex.job_id
 
 # 4. poll the raw result (202 while running; parse results only on 200)
 while True:
-    resp = session.backtest_result(exchange_id="binance", type_="ticker", job_id=jid)
+    resp = session.get_backtest_result(exchange_id="binance", type_="ticker", job_id=jid)
     if resp.status_code == 202:
         time.sleep(3)
         continue
@@ -127,12 +138,12 @@ accepted = session.sweep(
 )
 swid = accepted.sweep_id
 
-res = session.sweep_result(exchange_id="binance", type_="ticker", request_id=pid, sweep_id=swid)
+res = session.get_sweep_result(exchange_id="binance", type_="ticker", request_id=pid, sweep_id=swid)
 for row in res.leaderboard:
     print(row.rank, row.sharpe, row.params)
 
-session.sweep_sensitivity(exchange_id="binance", type_="ticker", request_id=pid, sweep_id=swid)
-session.sweep_run_equity_curve(..., run_ix=0)     # a retained trial's curve
+session.get_sweep_sensitivity(exchange_id="binance", type_="ticker", request_id=pid, sweep_id=swid)
+session.get_sweep_run_equity_curve(..., run_ix=0) # a retained trial's curve
 session.cancel_sweep(...)
 ```
 
@@ -142,9 +153,9 @@ session.cancel_sweep(...)
 created = session.create_dataset(name="My BTC ticks", instrument="BTC/USDT")
 # created.dataset_id, created.upload_id, created.upload.url (presigned R2 URL)
 # PUT your CSV to created.upload.url (no auth header needed), then:
-session.finalize_upload(dataset_id=created.dataset_id, upload_id=created.upload_id)
+session.finalize_dataset_upload(dataset_id=created.dataset_id, upload_id=created.upload_id)
 # poll:
-state = session.dataset_upload(dataset_id=created.dataset_id, upload_id=created.upload_id)
+state = session.get_dataset_upload(dataset_id=created.dataset_id, upload_id=created.upload_id)
 # state.status == "ready" -> backtest against it with exchange_id="user":
 acc = session.prepare(
     exchange_id="user", type_="ticker", dataset_id=created.dataset_id,
@@ -155,6 +166,26 @@ session.list_datasets()
 session.get_dataset(dataset_id)
 session.delete_dataset(dataset_id)
 ```
+
+To upload the file itself, pass the creation result or an upload session together
+with a `pathlib.Path` (or an open binary file) to `upload_dataset_file`. The PUT
+goes directly to the presigned URL without the session JWT or API key. A successful
+PUT only stores the bytes; call `finalize_dataset_upload` to queue ingest.
+
+```python
+from pathlib import Path
+
+session.upload_dataset_file(created, Path("BTC_USDT.csv"))
+session.finalize_dataset_upload(dataset_id=created.dataset_id, upload_id=created.upload_id)
+
+# Add a subsequent version after the earlier upload has finalized:
+next_upload = session.open_dataset_upload(created.dataset_id)
+session.upload_dataset_file(next_upload, Path("BTC_USDT_corrected.csv"))
+```
+
+`open_dataset_upload` is safe to retry while an upload is open: it returns the
+same session. Once an upload has produced a version, its `upload_id` is spent;
+`finalize_dataset_upload` returns `409` and a new session is required.
 
 ### Raw client access
 

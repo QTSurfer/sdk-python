@@ -24,7 +24,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "qtsurfer-api-client==0.110.3",
+    "qtsurfer-api-client==0.111.2",
     "httpx>=0.23,<1",
 ]
 

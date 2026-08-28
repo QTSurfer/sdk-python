@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `open_dataset_upload(dataset_id)` opens a dataset's current upload session or
+  its next version's session after finalization.
+- `upload_dataset_file(upload, source)` streams a `Path` or open binary file to
+  the session's presigned URL without sending the SDK JWT or API key. Failed PUTs
+  and unreadable local files raise `QTSUploadError` without exposing the URL.
+
+### Changed
+
+- Public reads now use explicit names: `list_exchanges`, `list_instruments`,
+  `get_strategy`, `get_prepare_status`, `get_backtest_result`,
+  `get_sweep_result`, `get_sweep_sensitivity`, `get_sweep_run_equity_curve`,
+  `finalize_dataset_upload`, and `get_dataset_upload` replace their terse
+  predecessors.
+- The generated client dependency is pinned to `qtsurfer-api-client==0.111.2`.
+  A spent upload session now has the API's documented `409` finalization response;
+  open a new session instead of reusing that upload id.
+
 ## [0.2.0] — 2026-08-27
 
 ### Added
