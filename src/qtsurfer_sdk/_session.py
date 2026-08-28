@@ -90,9 +90,9 @@ class AuthenticatedSession:
         calls carry the new Bearer header.
         """
         with self._lock:
-            resp: Response[
-                AuthTokenResponse | AuthTokenError | None
-            ] = _auth_sync_detailed(client=self._mint_client)
+            resp: Response[AuthTokenResponse | AuthTokenError | None] = _auth_sync_detailed(
+                client=self._mint_client
+            )
             if resp.status_code != 200 or not isinstance(resp.parsed, AuthTokenResponse):
                 raise QTSAuthError(
                     f"auth() failed: HTTP {resp.status_code}",
@@ -169,104 +169,140 @@ class AuthenticatedSession:
 
     # ---- High-level workflows (parity with sdk-java / sdk-ts) ----
 
-    def exchanges(self):
+    def list_exchanges(self):
         """List the exchanges the platform serves."""
         from qtsurfer_sdk import _workflows as wf
-        return wf.exchanges(self)
 
-    def instruments(self, exchange_id: str, segment: str | None = None):
+        return wf.list_exchanges(self)
+
+    def list_instruments(self, exchange_id: str, segment: str | None = None):
         """List an exchange's instruments, optionally for a segment."""
         from qtsurfer_sdk import _workflows as wf
-        return wf.instruments(self, exchange_id, segment)
+
+        return wf.list_instruments(self, exchange_id, segment)
 
     def compile_strategy(self, source: str):
         """Compile and register a Java strategy."""
         from qtsurfer_sdk import _workflows as wf
+
         return wf.compile_strategy(self, source)
 
     def validate_strategy(self, strategy_id: str):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.validate_strategy(self, strategy_id)
 
-    def strategy_state(self, strategy_id: str):
+    def get_strategy(self, strategy_id: str):
         from qtsurfer_sdk import _workflows as wf
-        return wf.strategy_state(self, strategy_id)
+
+        return wf.get_strategy(self, strategy_id)
 
     def list_strategies(self):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.list_strategies(self)
 
     def delete_strategy(self, strategy_id: str):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.delete_strategy(self, strategy_id)
 
     def get_strategy_code(self, strategy_id: str) -> str:
         from qtsurfer_sdk import _workflows as wf
+
         return wf.get_strategy_code(self, strategy_id)
 
     def prepare(self, **kwargs):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.prepare(self, **kwargs)
 
-    def prepare_status(self, **kwargs):
+    def get_prepare_status(self, **kwargs):
         from qtsurfer_sdk import _workflows as wf
-        return wf.prepare_status(self, **kwargs)
+
+        return wf.get_prepare_status(self, **kwargs)
 
     def execute(self, **kwargs):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.execute(self, **kwargs)
 
-    def backtest_result(self, **kwargs):
+    def get_backtest_result(self, **kwargs):
         from qtsurfer_sdk import _workflows as wf
-        return wf.backtest_result(self, **kwargs)
+
+        return wf.get_backtest_result(self, **kwargs)
 
     def cancel_backtest(self, **kwargs):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.cancel_backtest(self, **kwargs)
 
     def sweep(self, **kwargs):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.sweep(self, **kwargs)
 
-    def sweep_result(self, **kwargs):
+    def get_sweep_result(self, **kwargs):
         from qtsurfer_sdk import _workflows as wf
-        return wf.sweep_result(self, **kwargs)
 
-    def sweep_sensitivity(self, **kwargs):
-        from qtsurfer_sdk import _workflows as wf
-        return wf.sweep_sensitivity(self, **kwargs)
+        return wf.get_sweep_result(self, **kwargs)
 
-    def sweep_run_equity_curve(self, **kwargs):
+    def get_sweep_sensitivity(self, **kwargs):
         from qtsurfer_sdk import _workflows as wf
-        return wf.sweep_run_equity_curve(self, **kwargs)
+
+        return wf.get_sweep_sensitivity(self, **kwargs)
+
+    def get_sweep_run_equity_curve(self, **kwargs):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_sweep_run_equity_curve(self, **kwargs)
 
     def cancel_sweep(self, **kwargs):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.cancel_sweep(self, **kwargs)
 
     def create_dataset(self, **kwargs):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.create_dataset(self, **kwargs)
 
     def list_datasets(self):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.list_datasets(self)
 
     def get_dataset(self, dataset_id: str):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.get_dataset(self, dataset_id)
 
     def delete_dataset(self, dataset_id: str):
         from qtsurfer_sdk import _workflows as wf
+
         return wf.delete_dataset(self, dataset_id)
 
-    def finalize_upload(self, **kwargs):
+    def open_dataset_upload(self, dataset_id: str):
+        """Open the dataset's pending upload session or its next version's session."""
         from qtsurfer_sdk import _workflows as wf
-        return wf.finalize_upload(self, **kwargs)
 
-    def dataset_upload(self, **kwargs):
+        return wf.open_dataset_upload(self, dataset_id)
+
+    def upload_dataset_file(self, upload, source):
+        """PUT a local binary source to a dataset upload session's presigned URL."""
         from qtsurfer_sdk import _workflows as wf
-        return wf.dataset_upload(self, **kwargs)
+
+        return wf.upload_dataset_file(upload, source)
+
+    def finalize_dataset_upload(self, **kwargs):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.finalize_dataset_upload(self, **kwargs)
+
+    def get_dataset_upload(self, **kwargs):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_dataset_upload(self, **kwargs)
 
 
 def auth(
@@ -306,9 +342,7 @@ def _resolve_apikey(explicit: str | None) -> str:
     env = os.environ.get(APIKEY_ENV_VAR)
     if env and env.strip():
         return env
-    raise QTSAuthError(
-        f"auth() requires an apikey (argument or {APIKEY_ENV_VAR} env var)"
-    )
+    raise QTSAuthError(f"auth() requires an apikey (argument or {APIKEY_ENV_VAR} env var)")
 
 
 def _result_is_unauthorized(result: object) -> bool:

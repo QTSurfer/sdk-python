@@ -5,9 +5,7 @@ handling looks idiomatic across the three languages:
 
 * ``QTSError`` is the catch-all base.
 * ``QTSAuthError`` covers missing-apikey and JWT-exchange failures.
-
-Additional subclasses (download / preparation / execution) will land as
-the SDK gains workflow surface in future minor releases.
+* ``QTSUploadError`` covers credential-free dataset uploads.
 """
 
 from __future__ import annotations
@@ -67,3 +65,7 @@ class QTSCanceledError(QTSError):
 
 class QTSDownloadError(QTSError):
     """Raised when downloading tickers/klines fails."""
+
+
+class QTSUploadError(QTSError):
+    """Raised when a direct dataset upload fails without exposing its presigned URL."""

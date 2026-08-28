@@ -19,6 +19,7 @@ from qtsurfer_sdk._errors import (
     QTSExecutionError,
     QTSPreparationError,
     QTSTimeoutError,
+    QTSUploadError,
 )
 from qtsurfer_sdk._session import APIKEY_ENV_VAR, AuthenticatedSession, auth
 from qtsurfer_sdk._tokens import InMemoryTokenStore, TokenStore
@@ -35,6 +36,7 @@ __all__ = [
     "QTSExecutionError",
     "QTSPreparationError",
     "QTSTimeoutError",
+    "QTSUploadError",
     "TokenStore",
     "auth",
 ]

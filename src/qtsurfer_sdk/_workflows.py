@@ -14,12 +14,16 @@ data without the SDK hiding the API shape.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, BinaryIO, TypeVar
 
+import httpx
 from qtsurfer.api.client._generated import AuthenticatedClient
 from qtsurfer.api.client._generated.models import (
     CompileStrategyResponse200,
     CreateDatasetBody,
+    DatasetCreated,
+    DatasetUploadSession,
     DataSourceType,
     ExecuteBacktestBody,
     ExecuteSweepRequest,
@@ -34,6 +38,7 @@ from qtsurfer.api.client._generated.types import Response
 
 from qtsurfer_sdk._errors import (
     QTSCompileError,
+    QTSUploadError,
 )
 
 if TYPE_CHECKING:
@@ -53,14 +58,14 @@ def _parsed_call(
 # ---------------------------------------------------------------- catalog
 
 
-def exchanges(session: AuthenticatedSession):
+def list_exchanges(session: AuthenticatedSession):
     """List the exchanges the platform serves."""
     from qtsurfer.api.client._generated.api.exchange import list_exchanges
 
     return _parsed_call(session, lambda c: list_exchanges.sync_detailed(client=c))
 
 
-def instruments(session: AuthenticatedSession, exchange_id: str, segment: str | None = None):
+def list_instruments(session: AuthenticatedSession, exchange_id: str, segment: str | None = None):
     """List an exchange's instruments, optionally for a segment."""
     from qtsurfer.api.client._generated.api.exchange import (
         list_instruments,
@@ -104,7 +109,7 @@ def validate_strategy(session: AuthenticatedSession, strategy_id: str):
     return _parsed_call(session, lambda c: validate_strategy.sync_detailed(strategy_id, client=c))
 
 
-def strategy_state(session: AuthenticatedSession, strategy_id: str):
+def get_strategy(session: AuthenticatedSession, strategy_id: str):
     """Read a strategy's recorded state (incl. validation verdict)."""
     from qtsurfer.api.client._generated.api.strategy import get_strategy
 
@@ -172,7 +177,7 @@ def prepare(
     )
 
 
-def prepare_status(session: AuthenticatedSession, *, exchange_id: str, type_: str, job_id: str):
+def get_prepare_status(session: AuthenticatedSession, *, exchange_id: str, type_: str, job_id: str):
     """Poll a prepare job; returns ``PrepareJobState``."""
     from qtsurfer.api.client._generated.api.backtesting import get_prepare_status
 
@@ -207,7 +212,9 @@ def execute(
     )
 
 
-def backtest_result(session: AuthenticatedSession, *, exchange_id: str, type_: str, job_id: str):
+def get_backtest_result(
+    session: AuthenticatedSession, *, exchange_id: str, type_: str, job_id: str
+):
     """Read an execution's result state/metrics.
 
     Returns a raw ``httpx.Response`` (JSON) rather than the generated
@@ -286,7 +293,7 @@ def sweep(
     )
 
 
-def sweep_result(
+def get_sweep_result(
     session: AuthenticatedSession,
     *,
     exchange_id: str,
@@ -307,7 +314,7 @@ def sweep_result(
     )
 
 
-def sweep_sensitivity(
+def get_sweep_sensitivity(
     session: AuthenticatedSession,
     *,
     exchange_id: str,
@@ -327,7 +334,7 @@ def sweep_sensitivity(
     )
 
 
-def sweep_run_equity_curve(
+def get_sweep_run_equity_curve(
     session: AuthenticatedSession,
     *,
     exchange_id: str,
@@ -404,7 +411,53 @@ def delete_dataset(session: AuthenticatedSession, dataset_id: str):
     return _parsed_call(session, lambda c: delete_dataset.sync_detailed(dataset_id, client=c))
 
 
-def finalize_upload(session: AuthenticatedSession, *, dataset_id: str, upload_id: str):
+def open_dataset_upload(session: AuthenticatedSession, dataset_id: str):
+    """Open or recover an upload session for the dataset's next version.
+
+    Repeating this while a session is still open returns that same session, so it
+    is safe to retry after a lost response.
+    """
+    from qtsurfer.api.client._generated.api.dataset import open_dataset_upload
+
+    return _parsed_call(session, lambda c: open_dataset_upload.sync_detailed(dataset_id, client=c))
+
+
+def upload_dataset_file(
+    upload: DatasetCreated | DatasetUploadSession, source: Path | BinaryIO
+) -> None:
+    """Stream ``source`` to a presigned upload URL without API credentials.
+
+    ``source`` may be a :class:`pathlib.Path` or an already-open binary file.
+    The SDK closes only files it opens itself. A successful PUT only places the
+    bytes in storage; call :func:`finalize_dataset_upload` afterwards to queue ingest.
+    """
+    if isinstance(source, Path):
+        try:
+            with source.open("rb") as file:
+                _put_dataset_upload(upload, file)
+        except OSError as exc:
+            raise QTSUploadError("dataset upload source could not be read", cause=exc) from exc
+        return
+
+    _put_dataset_upload(upload, source)
+
+
+def _put_dataset_upload(upload: DatasetCreated | DatasetUploadSession, source: BinaryIO) -> None:
+    """Perform the credential-free presigned PUT without exposing its URL in errors."""
+    try:
+        response = httpx.put(upload.upload.url, content=source)
+    except httpx.HTTPError:
+        # httpx exceptions retain the request URL, which is itself a credential.
+        raise QTSUploadError("dataset upload transport failed") from None
+    except OSError as exc:
+        raise QTSUploadError("dataset upload source could not be read", cause=exc) from exc
+    if not response.is_success:
+        raise QTSUploadError(
+            f"dataset upload failed: HTTP {response.status_code}", status=response.status_code
+        )
+
+
+def finalize_dataset_upload(session: AuthenticatedSession, *, dataset_id: str, upload_id: str):
     """Finalize an uploaded file and trigger ingest."""
     from qtsurfer.api.client._generated.api.dataset import finalize_dataset_upload
 
@@ -414,7 +467,7 @@ def finalize_upload(session: AuthenticatedSession, *, dataset_id: str, upload_id
     )
 
 
-def dataset_upload(session: AuthenticatedSession, *, dataset_id: str, upload_id: str):
+def get_dataset_upload(session: AuthenticatedSession, *, dataset_id: str, upload_id: str):
     """Poll an upload / ingest state."""
     from qtsurfer.api.client._generated.api.dataset import get_dataset_upload
 
