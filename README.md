@@ -1,8 +1,10 @@
 # qtsurfer-sdk
 
 <p align="center">
+  <a href="https://github.com/QTSurfer/sdk-python/actions/workflows/ci.yml"><img src="https://github.com/QTSurfer/sdk-python/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://pypi.org/project/qtsurfer-sdk/"><img src="https://img.shields.io/pypi/v/qtsurfer-sdk.svg" alt="PyPI"></a>
   <img src="https://img.shields.io/pypi/pyversions/qtsurfer-sdk.svg" alt="Python versions">
+  <a href="https://qtsurfer.github.io/sdk-python/"><img src="https://img.shields.io/badge/docs-pdoc-blue" alt="pdoc"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
 </p>
 

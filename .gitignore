@@ -20,3 +20,7 @@ htmlcov/
 .idea/
 *.swp
 *.swo
+
+# pdoc output; hand-written Markdown guides remain tracked.
+docs/*
+!docs/*.md

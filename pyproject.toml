@@ -39,9 +39,12 @@ Issues = "https://github.com/QTSurfer/sdk-python/issues"
 
 [dependency-groups]
 dev = [
+    "build>=1.2",
+    "pdoc>=16.0",
     "pytest>=8",
     "pytest-httpx>=0.30",
     "ruff>=0.6",
+    "twine>=5.0",
 ]
 
 [build-system]
