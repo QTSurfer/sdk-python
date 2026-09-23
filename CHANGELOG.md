@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-23
+
+### Account visibility and storage
+
+- Read account limits with `get_account()` and current dataset, strategy, signal, and storage usage
+  with `get_account_usage()` before starting storage-consuming workflows.
+
+### Live execution
+
+- Start, inspect, stop, and update live runs with `start_live()`, `get_live()`, `stop_live()`, and
+  `update_live()`; adjust active strategy parameters with `update_live_params()` using a plain
+  Python mapping.
+- Browse owned and public runs separately with `list_live()` and `list_public_live()`. Read
+  retained signal history with `get_live_signals()` and follow pages with
+  `get_next_live_signals()`; expired cursors raise `QTSLiveSignalCursorExpiredError` with the
+  earliest available timestamp when supplied by the API.
+- Signal relay remains opt-in (`relay=False` by default) because retained signals use shared account
+  storage. Check account usage before enabling it for high-volume runs.
+
+### Dataset uploads
+
+- Create, list, inspect, upload, finalize, resume, and delete user datasets. Upload files directly to
+  the presigned URL without sending API credentials; finalize each upload to begin ingestion and
+  poll until it is ready before using it in `prepare()`.
+- Reopening a pending upload is safe; finalized upload sessions cannot be reused (`409`). Upload
+  failures raise `QTSUploadError` without exposing the temporary URL.
+
+### Compatibility
+
+- Target OpenAPI 0.126.2 through `qtsurfer-api-client==0.126.2`.
+
 ### Added
 
 - `open_dataset_upload(dataset_id)` opens a dataset's current upload session or
@@ -21,7 +52,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `get_sweep_result`, `get_sweep_sensitivity`, `get_sweep_run_equity_curve`,
   `finalize_dataset_upload`, and `get_dataset_upload` replace their terse
   predecessors.
-- The generated client dependency is pinned to `qtsurfer-api-client==0.111.2`.
+- The generated client dependency is pinned to `qtsurfer-api-client==0.126.2`.
   A spent upload session now has the API's documented `409` finalization response;
   open a new session instead of reusing that upload id.
 

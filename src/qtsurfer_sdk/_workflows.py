@@ -13,13 +13,16 @@ data without the SDK hiding the API shape.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, BinaryIO, TypeVar
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 from qtsurfer.api.client._generated import AuthenticatedClient
 from qtsurfer.api.client._generated.models import (
+    Account,
+    AccountUsage,
     CompileStrategyResponse200,
     CreateDatasetBody,
     DatasetCreated,
@@ -27,17 +30,26 @@ from qtsurfer.api.client._generated.models import (
     DataSourceType,
     ExecuteBacktestBody,
     ExecuteSweepRequest,
+    LiveListResponse,
+    LiveRun,
+    LiveSignalPage,
     PrepareRequest,
+    PublicLiveListResponse,
+    StartLiveRequest,
     SweepSpecRequest,
     SweepSpecRequestObjective,
     SweepSpecRequestParams,
     SweepSpecRequestSampler,
+    UpdateLiveParamsRequest,
+    UpdateLiveParamsRequestParams,
+    UpdateLiveRequest,
     WalkForwardRequest,
 )
 from qtsurfer.api.client._generated.types import Response
 
 from qtsurfer_sdk._errors import (
     QTSCompileError,
+    QTSLiveSignalCursorExpiredError,
     QTSUploadError,
 )
 
@@ -56,6 +68,136 @@ def _parsed_call(
 
 
 # ---------------------------------------------------------------- catalog
+
+
+def get_account(session: AuthenticatedSession) -> Account | None:
+    """Read the authenticated account's tier and limits."""
+    from qtsurfer.api.client._generated.api.account import get_account
+
+    return _parsed_call(session, lambda c: get_account.sync_detailed(client=c))
+
+
+def get_account_usage(session: AuthenticatedSession) -> AccountUsage | None:
+    """Read the authenticated account's current resource and storage usage."""
+    from qtsurfer.api.client._generated.api.account import get_account_usage
+
+    return _parsed_call(session, lambda c: get_account_usage.sync_detailed(client=c))
+
+
+def start_live(
+    session: AuthenticatedSession, strategy_id: str, request: StartLiveRequest
+) -> LiveRun | None:
+    from qtsurfer.api.client._generated.api.live_execution import start_live
+
+    return _parsed_call(
+        session, lambda c: start_live.sync_detailed(strategy_id, client=c, body=request)
+    )
+
+
+def get_live(session: AuthenticatedSession, strategy_id: str) -> LiveRun | None:
+    from qtsurfer.api.client._generated.api.live_execution import get_live
+
+    return _parsed_call(session, lambda c: get_live.sync_detailed(strategy_id, client=c))
+
+
+def stop_live(session: AuthenticatedSession, strategy_id: str) -> LiveRun | None:
+    from qtsurfer.api.client._generated.api.live_execution import stop_live
+
+    return _parsed_call(session, lambda c: stop_live.sync_detailed(strategy_id, client=c))
+
+
+def list_live(
+    session: AuthenticatedSession, *, cursor: str | None = None, limit: int | None = None
+) -> LiveListResponse | None:
+    from qtsurfer.api.client._generated.api.live_execution import list_live
+
+    return _parsed_call(
+        session, lambda c: list_live.sync_detailed(client=c, cursor=cursor, limit=limit)
+    )
+
+
+def list_public_live(
+    session: AuthenticatedSession, *, cursor: str | None = None, limit: int | None = None
+) -> PublicLiveListResponse | None:
+    """List publicly visible live runs."""
+    from qtsurfer.api.client._generated.api.live_execution import list_public_live
+
+    return _parsed_call(
+        session, lambda c: list_public_live.sync_detailed(client=c, cursor=cursor, limit=limit)
+    )
+
+
+def update_live(session: AuthenticatedSession, run_id: str, request: UpdateLiveRequest):
+    from qtsurfer.api.client._generated.api.live_execution import update_live
+
+    return _parsed_call(
+        session, lambda c: update_live.sync_detailed(run_id, client=c, body=request)
+    )
+
+
+def update_live_params(
+    session: AuthenticatedSession, run_id: str, request: Mapping[str, Any] | UpdateLiveParamsRequest
+):
+    from qtsurfer.api.client._generated.api.live_execution import update_live_params
+
+    body = (
+        request
+        if isinstance(request, UpdateLiveParamsRequest)
+        else UpdateLiveParamsRequest(params=UpdateLiveParamsRequestParams.from_dict(dict(request)))
+    )
+    return _parsed_call(
+        session, lambda c: update_live_params.sync_detailed(run_id, client=c, body=body)
+    )
+
+
+def get_live_signals(
+    session: AuthenticatedSession,
+    run_id: str,
+    *,
+    since_ms: int | None = None,
+    instrument: str | None = None,
+    cursor: str | None = None,
+    limit: int | None = None,
+) -> LiveSignalPage | None:
+    from qtsurfer.api.client._generated.api.live_execution import get_live_run_signals
+
+    response = session.call(
+        lambda c: get_live_run_signals.sync_detailed(
+            run_id, client=c, since_ms=since_ms, instrument=instrument, cursor=cursor, limit=limit
+        )
+    )
+    if response.status_code == 410:
+        error = response.parsed
+        available_since_ms = None
+        if hasattr(error, "message"):
+            import re
+
+            match = re.search(r"availableSinceMs\D+(\d+)", error.message)
+            if match:
+                available_since_ms = int(match.group(1))
+        raise QTSLiveSignalCursorExpiredError(
+            getattr(error, "message", "Live signal cursor expired; restart without cursor."),
+            available_since_ms=available_since_ms,
+        )
+    return response.parsed
+
+
+def get_next_live_signals(
+    session: AuthenticatedSession, run_id: str, page: LiveSignalPage
+) -> LiveSignalPage | None:
+    links = page.field_links
+    next_link = getattr(links, "next_", None)
+    href = getattr(next_link, "href", None)
+    if not href:
+        return None
+    query = parse_qs(urlparse(href).query)
+    cursor = query.get("cursor", [None])[0]
+    if not cursor:
+        raise ValueError("Live signal continuation link has no cursor")
+    limit_value = query.get("limit", [None])[0]
+    return get_live_signals(
+        session, run_id, cursor=cursor, limit=int(limit_value) if limit_value else None
+    )
 
 
 def list_exchanges(session: AuthenticatedSession):
@@ -158,7 +300,6 @@ def prepare(
     Pass ``dataset_id`` instead of ``instrument`` for ``exchangeId=user``.
     """
     from qtsurfer.api.client._generated.api.backtesting import prepare_backtest
-    from qtsurfer.api.client._generated.models import PrepareRequestCadence
 
     body_kwargs: dict[str, Any] = {}
     if instrument:
@@ -168,7 +309,7 @@ def prepare(
     if dataset_version_id:
         body_kwargs["dataset_version_id"] = dataset_version_id
     if cadence:
-        body_kwargs["cadence"] = PrepareRequestCadence(cadence)
+        body_kwargs["cadence"] = cadence
     body = PrepareRequest(from_=from_, to=to, **body_kwargs)
     ds = DataSourceType(type_)
     return _parsed_call(

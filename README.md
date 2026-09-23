@@ -28,6 +28,8 @@ The hand-written guides mirror the SDK family structure.
 - [Strategies and validation](docs/strategy.md)
 - [Backtests and parameter sweeps](docs/backtesting.md)
 - [Dataset uploads](docs/datasets.md)
+- [Account limits and storage usage](docs/account.md)
+- [Live execution](docs/live.md)
 - [API coverage](docs/api-coverage.md)
 
 ## Installation

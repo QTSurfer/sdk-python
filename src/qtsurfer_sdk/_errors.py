@@ -69,3 +69,11 @@ class QTSDownloadError(QTSError):
 
 class QTSUploadError(QTSError):
     """Raised when a direct dataset upload fails without exposing its presigned URL."""
+
+
+class QTSLiveSignalCursorExpiredError(QTSError):
+    """Raised when retention has removed the position addressed by a signal cursor."""
+
+    def __init__(self, message: str, *, available_since_ms: int | None = None) -> None:
+        super().__init__(message, status=410)
+        self.available_since_ms = available_since_ms

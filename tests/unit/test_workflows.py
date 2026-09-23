@@ -54,6 +54,26 @@ def test_list_exchanges_returns_list(token, httpx_mock: HTTPXMock):
     assert ex[0].id == "binance"
 
 
+def test_live_list_methods_use_distinct_endpoints_and_return_typed_pages(token, httpx_mock):
+    httpx_mock.add_response(url=f"{BASE}/live", json={"runs": []})
+    httpx_mock.add_response(url=f"{BASE}/live/public", json={"runs": []})
+
+    owned = token.list_live()
+    public = token.list_public_live()
+
+    assert owned.runs == []
+    assert public.runs == []
+    live_paths = [
+        request.url.path
+        for request in httpx_mock.get_requests()
+        if request.url.path.startswith("/v1/live")
+    ]
+    assert live_paths == [
+        "/v1/live",
+        "/v1/live/public",
+    ]
+
+
 def test_list_exchanges_refreshes_and_retries_401(token, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
         url=f"{BASE}/auth/token",

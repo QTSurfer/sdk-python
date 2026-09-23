@@ -169,6 +169,74 @@ class AuthenticatedSession:
 
     # ---- High-level workflows (parity with sdk-java / sdk-ts) ----
 
+    def get_account(self):
+        """Read the authenticated account's tier and limits."""
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_account(self)
+
+    def get_account_usage(self):
+        """Read the authenticated account's current resource and storage usage."""
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_account_usage(self)
+
+    def start_live(self, strategy_id: str, request):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.start_live(self, strategy_id, request)
+
+    def get_live(self, strategy_id: str):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_live(self, strategy_id)
+
+    def stop_live(self, strategy_id: str):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.stop_live(self, strategy_id)
+
+    def list_live(self, *, cursor: str | None = None, limit: int | None = None):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.list_live(self, cursor=cursor, limit=limit)
+
+    def list_public_live(self, *, cursor: str | None = None, limit: int | None = None):
+        """List publicly visible live runs."""
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.list_public_live(self, cursor=cursor, limit=limit)
+
+    def update_live(self, run_id: str, request):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.update_live(self, run_id, request)
+
+    def update_live_params(self, run_id: str, request):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.update_live_params(self, run_id, request)
+
+    def get_live_signals(
+        self,
+        run_id: str,
+        *,
+        since_ms: int | None = None,
+        instrument: str | None = None,
+        cursor: str | None = None,
+        limit: int | None = None,
+    ):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_live_signals(
+            self, run_id, since_ms=since_ms, instrument=instrument, cursor=cursor, limit=limit
+        )
+
+    def get_next_live_signals(self, run_id: str, page):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_next_live_signals(self, run_id, page)
+
     def list_exchanges(self):
         """List the exchanges the platform serves."""
         from qtsurfer_sdk import _workflows as wf
