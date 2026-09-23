@@ -5,7 +5,7 @@
   <a href="https://pypi.org/project/qtsurfer-sdk/"><img src="https://img.shields.io/pypi/v/qtsurfer-sdk.svg" alt="PyPI"></a>
   <img src="https://img.shields.io/pypi/pyversions/qtsurfer-sdk.svg" alt="Python versions">
   <a href="https://qtsurfer.github.io/sdk-python/"><img src="https://img.shields.io/badge/docs-pdoc-blue" alt="pdoc"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/QTSurfer/sdk-python/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
 </p>
 
 Opinionated Python SDK for [QTSurfer](https://qtsurfer.com), built on top of
@@ -23,14 +23,14 @@ key to a typed backtest in a few lines.
 
 The hand-written guides mirror the SDK family structure.
 
-- [Authentication](docs/auth.md)
-- [Exchanges and instruments](docs/exchange.md)
-- [Strategies and validation](docs/strategy.md)
-- [Backtests and parameter sweeps](docs/backtesting.md)
-- [Dataset uploads](docs/datasets.md)
-- [Account limits and storage usage](docs/account.md)
-- [Live execution](docs/live.md)
-- [API coverage](docs/api-coverage.md)
+- [Authentication](https://github.com/QTSurfer/sdk-python/blob/main/docs/auth.md)
+- [Exchanges and instruments](https://github.com/QTSurfer/sdk-python/blob/main/docs/exchange.md)
+- [Strategies and validation](https://github.com/QTSurfer/sdk-python/blob/main/docs/strategy.md)
+- [Backtests and parameter sweeps](https://github.com/QTSurfer/sdk-python/blob/main/docs/backtesting.md)
+- [Dataset uploads](https://github.com/QTSurfer/sdk-python/blob/main/docs/datasets.md)
+- [Account limits and storage usage](https://github.com/QTSurfer/sdk-python/blob/main/docs/account.md)
+- [Live execution](https://github.com/QTSurfer/sdk-python/blob/main/docs/live.md)
+- [API coverage](https://github.com/QTSurfer/sdk-python/blob/main/docs/api-coverage.md)
 
 ## Installation
 
@@ -253,4 +253,4 @@ from qtsurfer_sdk import QTSError, QTSAuthError, QTSPreparationError, QTSExecuti
 
 ## License
 
-Apache-2.0 — see [LICENSE](./LICENSE).
+Apache-2.0 — see [LICENSE](https://github.com/QTSurfer/sdk-python/blob/main/LICENSE).
