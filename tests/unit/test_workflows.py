@@ -16,7 +16,7 @@ import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
-from qtsurfer_sdk import QTSUploadError, auth
+from qtsurfer_sdk import QTSError, QTSUploadError, auth
 from qtsurfer_sdk import _workflows as wf
 
 BASE = "https://api.example/v1"
@@ -72,6 +72,32 @@ def test_live_list_methods_use_distinct_endpoints_and_return_typed_pages(token, 
         "/v1/live",
         "/v1/live/public",
     ]
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "status", "http_method"),
+    [
+        ("get_dataset", "/datasets/missing", 404, "GET"),
+        ("get_strategy", "/strategy/missing", 404, "GET"),
+        ("get_live", "/strategy/missing/live", 404, "GET"),
+        ("update_live_params", "/live/missing/params", 409, "PUT"),
+    ],
+)
+def test_workflow_http_errors_raise_qts_error(token, httpx_mock, method, path, status, http_method):
+    httpx_mock.add_response(
+        url=f"{BASE}{path}",
+        method=http_method,
+        status_code=status,
+        json={"code": status, "message": "Request failed"},
+    )
+
+    with pytest.raises(QTSError, match="Request failed") as exc_info:
+        if method == "update_live_params":
+            token.update_live_params("missing", {"x": "1"})
+        else:
+            getattr(token, method)("missing")
+
+    assert exc_info.value.status == status
 
 
 def test_live_paper_equity_command_and_deleted_catalogues(token, httpx_mock):

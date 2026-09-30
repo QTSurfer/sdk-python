@@ -38,7 +38,6 @@ from qtsurfer.api.client._generated.models import (
     LiveSignalPage,
     PrepareRequest,
     PublicLiveListResponse,
-    ResponseError,
     SendLiveCommandRequest,
     SendLiveCommandRequestProperties,
     StartLiveRequest,
@@ -55,6 +54,7 @@ from qtsurfer.api.client._generated.types import Response
 
 from qtsurfer_sdk._errors import (
     QTSCompileError,
+    QTSError,
     QTSLiveSignalCursorExpiredError,
     QTSUploadError,
 )
@@ -70,7 +70,12 @@ def _parsed_call(
     fn: Callable[[AuthenticatedClient], Response[T]],
 ) -> T | None:
     """Run a generated detailed call so the session can observe and refresh a 401."""
-    return session.call(fn).parsed
+    response = session.call(fn)
+    if not 200 <= response.status_code < 300:
+        error = response.parsed
+        message = getattr(error, "message", None) or f"HTTP {response.status_code}"
+        raise QTSError(message, status=response.status_code)
+    return response.parsed
 
 
 # ---------------------------------------------------------------- catalog
@@ -90,9 +95,7 @@ def get_account_usage(session: AuthenticatedSession) -> AccountUsage | None:
     return _parsed_call(session, lambda c: get_account_usage.sync_detailed(client=c))
 
 
-def get_live_run_paper(
-    session: AuthenticatedSession, run_id: str
-) -> LivePaper | ResponseError | None:
+def get_live_run_paper(session: AuthenticatedSession, run_id: str) -> LivePaper | None:
     """Read the latest simulated account balances, positions, and KPIs for a paper run."""
     from qtsurfer.api.client._generated.api.live_execution import get_live_run_paper
 
@@ -107,7 +110,7 @@ def get_live_run_paper_equity(
     since_ms: int | None = None,
     cursor: str | None = None,
     limit: int | None = None,
-) -> LivePaperEquityPage | ResponseError | None:
+) -> LivePaperEquityPage | None:
     """Read one oldest-first page of simulated paper equity history."""
     from qtsurfer.api.client._generated.api.live_execution import get_live_run_paper_equity
 
@@ -121,7 +124,7 @@ def get_live_run_paper_equity(
 
 def get_next_live_run_paper_equity(
     session: AuthenticatedSession, run_id: str, page: LivePaperEquityPage
-) -> LivePaperEquityPage | ResponseError | None:
+) -> LivePaperEquityPage | None:
     """Follow a paper-equity page's next link while retaining its query filters."""
     links = page.field_links
     next_link = getattr(links, "next_", None)
@@ -150,7 +153,7 @@ def send_live_command(
     command: str,
     *,
     properties: Mapping[str, Any] | None = None,
-) -> LiveCommandResult | ResponseError | None:
+) -> LiveCommandResult | None:
     """Send a transient command to an owned running strategy without restarting it."""
     from qtsurfer.api.client._generated.api.live_execution import send_live_command
 
@@ -267,6 +270,10 @@ def get_live_signals(
             getattr(error, "message", "Live signal cursor expired; restart without cursor."),
             available_since_ms=available_since_ms,
         )
+    if not 200 <= response.status_code < 300:
+        error = response.parsed
+        message = getattr(error, "message", None) or f"HTTP {response.status_code}"
+        raise QTSError(message, status=response.status_code)
     return response.parsed
 
 

@@ -238,6 +238,8 @@ from qtsurfer_sdk import QTSError, QTSAuthError, QTSPreparationError, QTSExecuti
 ```
 
 * `QTSError` — base for all SDK errors (carries optional `.status`).
+  Workflow methods raise it for non-2xx HTTP responses; `.status` contains the HTTP status and
+  the exception message uses the server-provided error message when available.
 * `QTSAuthError` — missing/invalid apikey, or non-2xx from `POST /auth/token`.
 * `QTSCompileError` — `POST /strategy` could not compile/register.
 * `QTSPreparationError` — a `prepare` stage failed.

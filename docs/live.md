@@ -55,7 +55,7 @@ for account in paper.accounts:
     print(account.currency, account.equity, len(account.open_positions))
 ```
 
-Without a `paper` block, paper reads return a typed `ResponseError` with status `404`.
+Without a `paper` block, paper reads raise `QTSError` with status `404`.
 `get_live_run_paper(run_id)` reads the current
 snapshot. `get_live_run_paper_equity(run_id, currency=None, since_ms=None, cursor=None, limit=None)`
 reads oldest-first history; omit `currency` to combine quote accounts. Cursor takes precedence over
@@ -117,7 +117,8 @@ print(accepted.command_id, accepted.effective_at_ms)
 ```
 
 The accepted response is not confirmation that the strategy finished handling the event. The
-generated response is a `LiveCommandResult` on `202` and a `ResponseError` on documented failures.
+generated response is a `LiveCommandResult` on `202`; non-2xx responses raise `QTSError` with
+the HTTP status and server error message.
 A `503` means the command was not sent and may be retried. The endpoint has no idempotency key, so
 an ambiguous network failure may have delivered a distinct command; avoid blind retries.
 

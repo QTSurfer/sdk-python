@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-09-30
+
+### Fixed
+
+- Raise `QTSError` for non-2xx workflow responses, preserving the HTTP status and server message instead of returning an error model as a successful result.
+- Keep expired live-signal cursors mapped to `QTSLiveSignalCursorExpiredError`.
+
 ## [0.4.0] — 2026-09-30
 
 ### Added
