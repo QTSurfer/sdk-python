@@ -30,11 +30,17 @@ from qtsurfer.api.client._generated.models import (
     DataSourceType,
     ExecuteBacktestBody,
     ExecuteSweepRequest,
+    LiveCommandResult,
     LiveListResponse,
+    LivePaper,
+    LivePaperEquityPage,
     LiveRun,
     LiveSignalPage,
     PrepareRequest,
     PublicLiveListResponse,
+    ResponseError,
+    SendLiveCommandRequest,
+    SendLiveCommandRequestProperties,
     StartLiveRequest,
     SweepSpecRequest,
     SweepSpecRequestObjective,
@@ -82,6 +88,81 @@ def get_account_usage(session: AuthenticatedSession) -> AccountUsage | None:
     from qtsurfer.api.client._generated.api.account import get_account_usage
 
     return _parsed_call(session, lambda c: get_account_usage.sync_detailed(client=c))
+
+
+def get_live_run_paper(
+    session: AuthenticatedSession, run_id: str
+) -> LivePaper | ResponseError | None:
+    """Read the latest simulated account balances, positions, and KPIs for a paper run."""
+    from qtsurfer.api.client._generated.api.live_execution import get_live_run_paper
+
+    return _parsed_call(session, lambda c: get_live_run_paper.sync_detailed(run_id, client=c))
+
+
+def get_live_run_paper_equity(
+    session: AuthenticatedSession,
+    run_id: str,
+    *,
+    currency: str | None = None,
+    since_ms: int | None = None,
+    cursor: str | None = None,
+    limit: int | None = None,
+) -> LivePaperEquityPage | ResponseError | None:
+    """Read one oldest-first page of simulated paper equity history."""
+    from qtsurfer.api.client._generated.api.live_execution import get_live_run_paper_equity
+
+    return _parsed_call(
+        session,
+        lambda c: get_live_run_paper_equity.sync_detailed(
+            run_id, client=c, currency=currency, since_ms=since_ms, cursor=cursor, limit=limit
+        ),
+    )
+
+
+def get_next_live_run_paper_equity(
+    session: AuthenticatedSession, run_id: str, page: LivePaperEquityPage
+) -> LivePaperEquityPage | ResponseError | None:
+    """Follow a paper-equity page's next link while retaining its query filters."""
+    links = page.field_links
+    next_link = getattr(links, "next_", None)
+    href = getattr(next_link, "href", None)
+    if not href:
+        return None
+    query = parse_qs(urlparse(href).query)
+    cursor = query.get("cursor", [None])[0]
+    if not cursor:
+        raise ValueError("Paper equity continuation link has no cursor")
+    since_ms = query.get("sinceMs", [None])[0]
+    limit = query.get("limit", [None])[0]
+    return get_live_run_paper_equity(
+        session,
+        run_id,
+        currency=query.get("currency", [None])[0],
+        since_ms=int(since_ms) if since_ms else None,
+        cursor=cursor,
+        limit=int(limit) if limit else None,
+    )
+
+
+def send_live_command(
+    session: AuthenticatedSession,
+    run_id: str,
+    command: str,
+    *,
+    properties: Mapping[str, Any] | None = None,
+) -> LiveCommandResult | ResponseError | None:
+    """Send a transient command to an owned running strategy without restarting it."""
+    from qtsurfer.api.client._generated.api.live_execution import send_live_command
+
+    request_properties = None
+    if properties is not None:
+        request_properties = SendLiveCommandRequestProperties.from_dict(dict(properties))
+    body = SendLiveCommandRequest(command=command)
+    if request_properties is not None:
+        body.properties = request_properties
+    return _parsed_call(
+        session, lambda c: send_live_command.sync_detailed(run_id, client=c, body=body)
+    )
 
 
 def start_live(
@@ -156,6 +237,7 @@ def get_live_signals(
     *,
     since_ms: int | None = None,
     instrument: str | None = None,
+    signal_type: str | None = None,
     cursor: str | None = None,
     limit: int | None = None,
 ) -> LiveSignalPage | None:
@@ -163,7 +245,13 @@ def get_live_signals(
 
     response = session.call(
         lambda c: get_live_run_signals.sync_detailed(
-            run_id, client=c, since_ms=since_ms, instrument=instrument, cursor=cursor, limit=limit
+            run_id,
+            client=c,
+            since_ms=since_ms,
+            instrument=instrument,
+            type_=signal_type,
+            cursor=cursor,
+            limit=limit,
         )
     )
     if response.status_code == 410:
@@ -195,8 +283,15 @@ def get_next_live_signals(
     if not cursor:
         raise ValueError("Live signal continuation link has no cursor")
     limit_value = query.get("limit", [None])[0]
+    since_ms = query.get("sinceMs", [None])[0]
     return get_live_signals(
-        session, run_id, cursor=cursor, limit=int(limit_value) if limit_value else None
+        session,
+        run_id,
+        since_ms=int(since_ms) if since_ms else None,
+        instrument=query.get("instrument", [None])[0],
+        signal_type=query.get("type", [None])[0],
+        cursor=cursor,
+        limit=int(limit_value) if limit_value else None,
     )
 
 
@@ -258,11 +353,14 @@ def get_strategy(session: AuthenticatedSession, strategy_id: str):
     return _parsed_call(session, lambda c: get_strategy.sync_detailed(strategy_id, client=c))
 
 
-def list_strategies(session: AuthenticatedSession):
-    """List the strategies you have registered."""
+def list_strategies(session: AuthenticatedSession, *, include_deleted: bool = False):
+    """List registered strategies, optionally including deleted entries."""
     from qtsurfer.api.client._generated.api.strategy import list_strategies
 
-    return _parsed_call(session, lambda c: list_strategies.sync_detailed(client=c))
+    return _parsed_call(
+        session,
+        lambda c: list_strategies.sync_detailed(client=c, include_deleted=include_deleted),
+    )
 
 
 def delete_strategy(session: AuthenticatedSession, strategy_id: str):
@@ -531,11 +629,14 @@ def create_dataset(
     return _parsed_call(session, lambda c: create_dataset.sync_detailed(client=c, body=body))
 
 
-def list_datasets(session: AuthenticatedSession):
-    """List your datasets."""
+def list_datasets(session: AuthenticatedSession, *, include_deleted: bool = False):
+    """List your datasets, optionally including deleted entries."""
     from qtsurfer.api.client._generated.api.dataset import list_datasets
 
-    return _parsed_call(session, lambda c: list_datasets.sync_detailed(client=c))
+    return _parsed_call(
+        session,
+        lambda c: list_datasets.sync_detailed(client=c, include_deleted=include_deleted),
+    )
 
 
 def get_dataset(session: AuthenticatedSession, dataset_id: str):

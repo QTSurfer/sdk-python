@@ -74,6 +74,70 @@ def test_live_list_methods_use_distinct_endpoints_and_return_typed_pages(token, 
     ]
 
 
+def test_live_paper_equity_command_and_deleted_catalogues(token, httpx_mock):
+    equity_url = f"{BASE}/live/run-1/paper/equity"
+    equity_query = "currency=USDT&sinceMs=123&limit=4"
+    next_equity_query = "currency=USDT&sinceMs=123&cursor=next&limit=4"
+    httpx_mock.add_response(
+        url=f"{BASE}/live/run-1/paper",
+        json={
+            "runId": "run-1",
+            "stage": "LIVE",
+            "accounts": [],
+        },
+    )
+    httpx_mock.add_response(
+        url=f"{equity_url}?{equity_query}",
+        json={
+            "points": [],
+            "_links": {"next": {"href": f"{equity_url}?{next_equity_query}"}},
+        },
+    )
+    httpx_mock.add_response(url=f"{equity_url}?{next_equity_query}", json={"points": []})
+    httpx_mock.add_response(
+        url=f"{BASE}/live/run-1/commands",
+        method="POST",
+        status_code=202,
+        json={"runId": "run-1", "commandId": "cmd-1", "effectiveAtMs": 123},
+    )
+    httpx_mock.add_response(url=f"{BASE}/strategies?includeDeleted=true", json={"strategies": []})
+    httpx_mock.add_response(url=f"{BASE}/datasets?includeDeleted=true", json={"datasets": []})
+
+    assert token.get_live_run_paper("run-1").run_id == "run-1"
+    equity = token.get_live_run_paper_equity("run-1", currency="USDT", since_ms=123, limit=4)
+    assert token.get_next_live_run_paper_equity("run-1", equity).points == []
+    command = token.send_live_command("run-1", "rebalance", properties={"targetWeight": 0.25})
+    assert command.command_id == "cmd-1"
+    assert token.list_strategies(include_deleted=True).strategies == []
+    assert token.list_datasets(include_deleted=True).datasets == []
+
+    requests = httpx_mock.get_requests()
+    command_request = next(
+        request for request in requests if request.url.path.endswith("/commands")
+    )
+    assert command_request.read() == b'{"command":"rebalance","properties":{"targetWeight":0.25}}'
+    continued = next(request for request in requests if request.url.params.get("cursor") == "next")
+    assert continued.url.params["currency"] == "USDT"
+    assert continued.url.params["sinceMs"] == "123"
+    assert continued.url.params["limit"] == "4"
+
+
+def test_live_signal_continuation_preserves_filters(token, httpx_mock):
+    signals_url = f"{BASE}/live/run-1/signals"
+    initial_query = "sinceMs=123&instrument=ETH%2FUSDT&type=paper&limit=4"
+    next_query = "sinceMs=123&instrument=ETH%2FUSDT&type=paper&cursor=next&limit=4"
+    httpx_mock.add_response(
+        url=f"{signals_url}?{initial_query}",
+        json={"signals": [], "_links": {"next": {"href": f"{signals_url}?{next_query}"}}},
+    )
+    httpx_mock.add_response(url=f"{signals_url}?{next_query}", json={"signals": []})
+
+    page = token.get_live_signals(
+        "run-1", since_ms=123, instrument="ETH/USDT", signal_type="paper", limit=4
+    )
+    assert token.get_next_live_signals("run-1", page).signals == []
+
+
 def test_list_exchanges_refreshes_and_retries_401(token, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
         url=f"{BASE}/auth/token",

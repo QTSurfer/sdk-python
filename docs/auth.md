@@ -1,7 +1,7 @@
 # Authentication
 
 `auth(apikey=None, *, base_url=DEFAULT_BASE_URL, store=None)` exchanges a long-lived API key for a
-JWT. Omit `apikey` to read `QTSURFER_APIKEY`. The default base URL is the production API, and the
+JWT. Omit `apikey` to read `QTSURFER_APIKEY`. The default base URL is the staging beta API, and the
 default token store is in-memory.
 
 ```python

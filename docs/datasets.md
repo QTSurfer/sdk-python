@@ -10,12 +10,15 @@ session = auth()  # reads QTSURFER_APIKEY
 
 ## Discover and manage datasets
 
-`list_datasets()` lists your datasets, `get_dataset(dataset_id)` reads one, and
+`list_datasets()` lists active datasets; pass `include_deleted=True` to include soft-deleted entries
+with `deleted_at` when reconciling a local catalogue. `get_dataset(dataset_id)` reads one, and
 `delete_dataset(dataset_id)` soft-deletes it. These metadata operations use the authenticated
 session.
 
 ```python
-datasets = session.list_datasets()
+datasets = session.list_datasets(include_deleted=True)
+for item in datasets.datasets:
+    print(item.dataset_id, item.deleted_at)
 dataset = session.get_dataset(dataset_id)
 deleted = session.delete_dataset(dataset_id)
 ```

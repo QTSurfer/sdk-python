@@ -24,7 +24,7 @@ from qtsurfer_sdk import (
     QTSAuthError,
     auth,
 )
-from qtsurfer_sdk._session import _resolve_apikey
+from qtsurfer_sdk._session import DEFAULT_BASE_URL, _resolve_apikey
 
 # ---- Fixtures ----------------------------------------------------------------
 
@@ -80,6 +80,9 @@ class TestApikeyResolution:
 
 
 class TestAuthHelper:
+    def test_default_base_url_is_staging_beta(self):
+        assert DEFAULT_BASE_URL == "https://api.qtsurfer.net/v1"
+
     def test_mints_with_explicit_apikey(self, httpx_mock, base_url):
         httpx_mock.add_response(
             url=f"{base_url}/auth/token",

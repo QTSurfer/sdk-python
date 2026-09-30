@@ -26,7 +26,7 @@ from qtsurfer_sdk._errors import QTSAuthError
 from qtsurfer_sdk._tokens import InMemoryTokenStore, TokenStore
 
 APIKEY_ENV_VAR = "QTSURFER_APIKEY"
-DEFAULT_BASE_URL = "https://api.qtsurfer.com/v1"
+DEFAULT_BASE_URL = "https://api.qtsurfer.net/v1"
 
 T = TypeVar("T")
 
@@ -207,6 +207,38 @@ class AuthenticatedSession:
 
         return wf.list_public_live(self, cursor=cursor, limit=limit)
 
+    def get_live_run_paper(self, run_id: str):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_live_run_paper(self, run_id)
+
+    def get_live_run_paper_equity(
+        self,
+        run_id: str,
+        *,
+        currency: str | None = None,
+        since_ms: int | None = None,
+        cursor: str | None = None,
+        limit: int | None = None,
+    ):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_live_run_paper_equity(
+            self, run_id, currency=currency, since_ms=since_ms, cursor=cursor, limit=limit
+        )
+
+    def get_next_live_run_paper_equity(self, run_id: str, page):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_next_live_run_paper_equity(self, run_id, page)
+
+    def send_live_command(
+        self, run_id: str, command: str, *, properties: dict[str, object] | None = None
+    ):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.send_live_command(self, run_id, command, properties=properties)
+
     def update_live(self, run_id: str, request):
         from qtsurfer_sdk import _workflows as wf
 
@@ -223,13 +255,20 @@ class AuthenticatedSession:
         *,
         since_ms: int | None = None,
         instrument: str | None = None,
+        signal_type: str | None = None,
         cursor: str | None = None,
         limit: int | None = None,
     ):
         from qtsurfer_sdk import _workflows as wf
 
         return wf.get_live_signals(
-            self, run_id, since_ms=since_ms, instrument=instrument, cursor=cursor, limit=limit
+            self,
+            run_id,
+            since_ms=since_ms,
+            instrument=instrument,
+            signal_type=signal_type,
+            cursor=cursor,
+            limit=limit,
         )
 
     def get_next_live_signals(self, run_id: str, page):
@@ -265,10 +304,10 @@ class AuthenticatedSession:
 
         return wf.get_strategy(self, strategy_id)
 
-    def list_strategies(self):
+    def list_strategies(self, *, include_deleted: bool = False):
         from qtsurfer_sdk import _workflows as wf
 
-        return wf.list_strategies(self)
+        return wf.list_strategies(self, include_deleted=include_deleted)
 
     def delete_strategy(self, strategy_id: str):
         from qtsurfer_sdk import _workflows as wf
@@ -335,10 +374,10 @@ class AuthenticatedSession:
 
         return wf.create_dataset(self, **kwargs)
 
-    def list_datasets(self):
+    def list_datasets(self, *, include_deleted: bool = False):
         from qtsurfer_sdk import _workflows as wf
 
-        return wf.list_datasets(self)
+        return wf.list_datasets(self, include_deleted=include_deleted)
 
     def get_dataset(self, dataset_id: str):
         from qtsurfer_sdk import _workflows as wf
@@ -392,7 +431,7 @@ def auth(
     :param apikey: Long-lived API key. When omitted, read from
         ``QTSURFER_APIKEY``.
     :param base_url: API base URL. Defaults to
-        ``https://api.qtsurfer.com/v1``.
+        ``https://api.qtsurfer.net/v1`` (staging beta).
     :param store: Custom :class:`TokenStore`. Defaults to
         :class:`InMemoryTokenStore`.
     :raises QTSAuthError: when no apikey is available, or the initial JWT

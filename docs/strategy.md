@@ -30,12 +30,16 @@ print(outcome, state.validation)
 
 ## List, read source, and delete
 
-`list_strategies()` lists registered strategies. `get_strategy_code(strategy_id)` returns the
-registered source. `delete_strategy(strategy_id)` removes the registration; historical runs remain.
+`list_strategies()` lists active registrations. Pass `include_deleted=True` to include soft-deleted
+entries with `deleted_at`, useful when reconciling a local catalogue. `get_strategy_code(strategy_id)`
+returns the registered source. `delete_strategy(strategy_id)` removes the active registration;
+historical runs remain.
 
 ```python
-for strategy in session.list_strategies():
+for strategy in session.list_strategies(include_deleted=True):
     print(strategy.strategy_id)
+    if strategy.deleted_at:
+        print("deleted at", strategy.deleted_at)
 source_text = session.get_strategy_code(compiled.strategy_id)
 session.delete_strategy(compiled.strategy_id)
 ```

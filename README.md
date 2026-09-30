@@ -55,8 +55,8 @@ from qtsurfer_sdk import auth
 # Reads QTSURFER_APIKEY from env when no argument is passed.
 session = auth()
 
-# Or point at a different API base (defaults to production):
-# session = auth("ak_...", base_url="https://api.qtsurfer.net/v1")
+# Or configure a different deployment:
+# session = auth("ak_...", base_url="https://api.example/v1")
 
 exchanges = session.list_exchanges()
 for ex in exchanges:

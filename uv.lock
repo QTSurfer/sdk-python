@@ -725,21 +725,20 @@ wheels = [
 
 [[package]]
 name = "qtsurfer-api-client"
-version = "0.126.2"
-source = { registry = "https://pypi.org/simple" }
+version = "0.128.14"
+source = { registry = "../qtsurfer-api-client-python/dist" }
 dependencies = [
     { name = "attrs" },
     { name = "httpx" },
     { name = "python-dateutil" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/00/d6/c164acffc4b99af3e5bdcd4e3eb4bea4d858378e476d613b917397b1abeb/qtsurfer_api_client-0.126.2.tar.gz", hash = "sha256:c45683bbb5b4451bdd0e3916cc79f798fae8879a0cb8278999117ca48dfe567e", size = 111506, upload-time = "2026-09-23T16:02:52.532Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/99/bea2379c333b5123a8c4a96c919bd871c4470bc70cba1b448616dbe4f2d9/qtsurfer_api_client-0.126.2-py3-none-any.whl", hash = "sha256:7340b46fd502db6f984d3d77398ebc4f98324e5c5aa75a65b761be427a1604fe", size = 264155, upload-time = "2026-09-23T16:02:50.99Z" },
+    { path = "qtsurfer_api_client-0.128.14-py3-none-any.whl" },
 ]
 
 [[package]]
 name = "qtsurfer-sdk"
-version = "0.3.1"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -759,7 +758,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.23,<1" },
-    { name = "qtsurfer-api-client", specifier = "==0.126.2" },
+    { name = "qtsurfer-api-client", specifier = "==0.128.14" },
 ]
 
 [package.metadata.requires-dev]

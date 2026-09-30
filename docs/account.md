@@ -8,11 +8,13 @@ session = auth()  # reads QTSURFER_APIKEY
 
 ## Read account limits
 
-`get_account()` returns the account id, tier, dataset caps, and total storage cap.
+`get_account()` returns the account id, tier, dataset caps, total storage cap, and
+`max_sweep_cartesian`, the maximum number of combinations for a full Cartesian sweep.
 
 ```python
 account = session.get_account()
 print(account.tier, account.max_datasets, account.max_total_storage_bytes)
+print("Cartesian sweep cap:", account.max_sweep_cartesian)
 ```
 
 ## Read current usage

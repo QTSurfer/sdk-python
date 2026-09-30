@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-30
+
+### Added
+
+- Simulate live fills with `StartLiveRequest.paper`, inspect account state with `get_live_run_paper()`, and page equity history with filter-preserving `get_next_live_run_paper_equity()`.
+- Deliver owner-only transient strategy commands with `send_live_command()` and arbitrary JSON `properties` without restarting a run.
+- Include soft-deleted strategies and datasets in `list_strategies(include_deleted=True)` and `list_datasets(include_deleted=True)`; retain signal-type filters across page continuation.
+
+### Changed
+
+- Target OpenAPI `0.128.14` through `qtsurfer-api-client==0.128.14`; account limits include `max_sweep_cartesian` and live-run details include an optional stop/failure `reason`.
+- Default `auth()` to the staging beta API at `https://api.qtsurfer.net/v1` rather than the reserved production host.
+
 ## [0.3.1] — 2026-09-23
 
 - Use absolute GitHub URLs for README guide and license links so they resolve on PyPI.
