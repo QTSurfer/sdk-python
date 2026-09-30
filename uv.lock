@@ -726,14 +726,15 @@ wheels = [
 [[package]]
 name = "qtsurfer-api-client"
 version = "0.128.14"
-source = { registry = "../qtsurfer-api-client-python/dist" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "httpx" },
     { name = "python-dateutil" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/b3/3a/bc83ef41e45133e1c65e8a10fd551ed8b8a6e493491e57dd130d9211257a/qtsurfer_api_client-0.128.14.tar.gz", hash = "sha256:2c62259ddec040dc137d706e6b68086a2a0a2b19d72dd8ec302357f888d97acc", size = 124296, upload-time = "2026-09-30T20:13:19.169Z" }
 wheels = [
-    { path = "qtsurfer_api_client-0.128.14-py3-none-any.whl" },
+    { url = "https://files.pythonhosted.org/packages/3b/53/85a9c134d950b91d104cf65038ba2d38e95b0778c1ab91edccbd0896eef1/qtsurfer_api_client-0.128.14-py3-none-any.whl", hash = "sha256:c0f0f39c3344e7d7914fb6d5b2f4a1efb98be141447ea9b9fd835f5c6840cd12", size = 291027, upload-time = "2026-09-30T20:13:17.724Z" },
 ]
 
 [[package]]
