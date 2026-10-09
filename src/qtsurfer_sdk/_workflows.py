@@ -171,6 +171,7 @@ def send_live_command(
 def start_live(
     session: AuthenticatedSession, strategy_id: str, request: StartLiveRequest
 ) -> LiveRun | None:
+    """Start a live run using the generated request model, including its sandbox override."""
     from qtsurfer.api.client._generated.api.live_execution import start_live
 
     return _parsed_call(

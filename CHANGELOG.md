@@ -4,7 +4,13 @@ All notable changes to `qtsurfer-sdk` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.2] — 2026-10-10
+
+### Added
+
+- `start_live()` supports `StartLiveRequest(sandbox=True)` to repeat the sandbox trial for a
+  strategy that already passed it. Update the pinned generated client to `0.128.25`, which also
+  exposes the intervening live-execution API additions.
 
 ## [0.4.1] — 2026-09-30
 

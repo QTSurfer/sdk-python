@@ -29,6 +29,21 @@ stopping = session.stop_live(strategy_id)
 `relay` defaults to `false`. Enable it only when a consumer needs live or retained signals, because
 retained signals consume shared account storage.
 
+Once a compiled strategy has passed its sandbox trial, subsequent runs start directly in `LIVE`.
+Pass `sandbox=True` in `StartLiveRequest` to run it through `SANDBOX` again, for example to inspect
+its WebSocket signal history while debugging. The field is available with
+`qtsurfer-api-client==0.128.25` or newer; the SDK dependency pin is updated after that client
+release is published.
+
+## Run IDs and stream URLs
+
+The API client adds `get_live_run(run_id)`, `rotate_live_stream(run_id)`, and
+`revoke_live_stream(run_id)`, plus `stats`, `gate`, and `warm_from` on the generated live-run models.
+The high-level SDK does not wrap those run-ID and stream-management operations yet; call them through
+the generated client with `session.call(...)`. This keeps the workflow surface stable while the
+SDK has no managed WebSocket connection. AsyncAPI `history` is a WebSocket operation, so it is not
+available through the REST API client either.
+
 ### Simulate paper fills
 
 Paper trading is opt-in. Add a `LivePaperConfig` to the start request to simulate balances,

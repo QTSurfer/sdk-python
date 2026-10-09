@@ -1,6 +1,6 @@
 # API coverage
 
-This release targets API spec **0.128.14** through `qtsurfer-api-client==0.128.14`. Every spec
+This release targets API spec **0.128.25** through `qtsurfer-api-client==0.128.25`. Every spec
 operation is either wrapped below or deliberately left to the generated client.
 
 | Domain | SDK surface | DX boundary |
@@ -16,3 +16,16 @@ operation is either wrapped below or deliberately left to the generated client.
 
 The generated `qtsurfer-api-client` is the endpoint-level escape hatch, not a competing SDK
 surface. Its version is pinned with the SDK, so callers must not assume it exposes a newer API spec.
+
+## OpenAPI 0.128.15–0.128.25 additions
+
+The next generated-client dependency update (after `qtsurfer-api-client==0.128.25` is published)
+exposes the intervening API additions through the raw generated client: `get_live_run`,
+`rotate_live_stream`, and `revoke_live_stream`; `LiveRunStats`; `warm_from`, `gate`, and
+`StartLiveRequest.sandbox`; and the `LiveSourceRequest` schema with optional instruments. The SDK
+does not add high-level wrappers for the three run-ID/stream-management routes in this update;
+call their generated operations with `session.call(...)` until a high-level workflow contract is
+chosen.
+
+AsyncAPI 0.3.0 `history` is also not part of the generated REST client. The SDK does not manage a
+WebSocket connection, so callers that need it must use a compatible WebSocket/Centrifugo client.

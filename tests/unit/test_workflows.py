@@ -74,6 +74,36 @@ def test_live_list_methods_use_distinct_endpoints_and_return_typed_pages(token, 
     ]
 
 
+def test_start_live_passes_sandbox_override(token, httpx_mock):
+    httpx_mock.add_response(
+        url=f"{BASE}/strategy/strategy-1/live",
+        method="POST",
+        status_code=201,
+        json={
+            "strategyId": "strategy-1",
+            "runId": "run-1",
+            "visibility": "private",
+            "stage": "SANDBOX",
+            "state": "STARTING",
+            "desired": "RUNNING",
+            "sources": [],
+            "params": {},
+            "paramsVersion": 0,
+            "relay": False,
+            "startedAtMs": 1_728_000_000_000,
+        },
+    )
+
+    from qtsurfer.api.client.models import StartLiveRequest
+
+    run = token.start_live("strategy-1", StartLiveRequest(sources=[], sandbox=True))
+
+    assert run.run_id == "run-1"
+    request = httpx_mock.get_request(url=f"{BASE}/strategy/strategy-1/live", method="POST")
+    assert request is not None
+    assert json.loads(request.read())["sandbox"] is True
+
+
 @pytest.mark.parametrize(
     ("method", "path", "status", "http_method"),
     [
