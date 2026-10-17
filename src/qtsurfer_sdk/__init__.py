@@ -10,6 +10,16 @@ a long-lived API key for a short-lived JWT and returns an
 :class:`AuthenticatedSession` that transparently refreshes the JWT on 401.
 """
 
+from qtsurfer.api.client.models import (
+    AuthTokenErrorCode,
+    ErrorNextCall,
+    InstrumentCatalogueResponse,
+    InstrumentListResponse,
+    KeyScopes,
+    PoolDetail,
+    PoolListResponse,
+)
+
 from qtsurfer_sdk._errors import (
     QTSAuthError,
     QTSCanceledError,
@@ -28,7 +38,14 @@ from qtsurfer_sdk._tokens import InMemoryTokenStore, TokenStore
 __all__ = [
     "APIKEY_ENV_VAR",
     "AuthenticatedSession",
+    "AuthTokenErrorCode",
+    "ErrorNextCall",
+    "InstrumentCatalogueResponse",
+    "InstrumentListResponse",
     "InMemoryTokenStore",
+    "KeyScopes",
+    "PoolDetail",
+    "PoolListResponse",
     "QTSAuthError",
     "QTSCanceledError",
     "QTSCompileError",

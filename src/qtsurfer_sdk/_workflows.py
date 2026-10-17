@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, BinaryIO, TypeVar
+from typing import TYPE_CHECKING, Any, BinaryIO, TypeVar, cast
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -28,14 +28,17 @@ from qtsurfer.api.client._generated.models import (
     DatasetCreated,
     DatasetUploadSession,
     DataSourceType,
+    ErrorNextCall,
     ExecuteBacktestBody,
     ExecuteSweepRequest,
+    InstrumentListResponse,
     LiveCommandResult,
     LiveListResponse,
     LivePaper,
     LivePaperEquityPage,
     LiveRun,
     LiveSignalPage,
+    PoolListResponse,
     PrepareRequest,
     PublicLiveListResponse,
     SendLiveCommandRequest,
@@ -50,7 +53,7 @@ from qtsurfer.api.client._generated.models import (
     UpdateLiveRequest,
     WalkForwardRequest,
 )
-from qtsurfer.api.client._generated.types import Response
+from qtsurfer.api.client._generated.types import UNSET, Response
 
 from qtsurfer_sdk._errors import (
     QTSCompileError,
@@ -74,8 +77,16 @@ def _parsed_call(
     if not 200 <= response.status_code < 300:
         error = response.parsed
         message = getattr(error, "message", None) or f"HTTP {response.status_code}"
-        raise QTSError(message, status=response.status_code)
-    return response.parsed
+        reason = getattr(error, "reason", None)
+        next_call = getattr(error, "next_", None)
+        raise QTSError(
+            message,
+            status=response.status_code,
+            reason=reason if isinstance(reason, str) else None,
+            next_call=next_call if isinstance(next_call, ErrorNextCall) else None,
+            retry_after=response.headers.get("Retry-After"),
+        )
+    return cast(T | None, response.parsed)
 
 
 # ---------------------------------------------------------------- catalog
@@ -99,7 +110,10 @@ def get_live_run_paper(session: AuthenticatedSession, run_id: str) -> LivePaper 
     """Read the latest simulated account balances, positions, and KPIs for a paper run."""
     from qtsurfer.api.client._generated.api.live_execution import get_live_run_paper
 
-    return _parsed_call(session, lambda c: get_live_run_paper.sync_detailed(run_id, client=c))
+    return cast(
+        LivePaper | None,
+        _parsed_call(session, lambda c: get_live_run_paper.sync_detailed(run_id, client=c)),
+    )
 
 
 def get_live_run_paper_equity(
@@ -114,10 +128,18 @@ def get_live_run_paper_equity(
     """Read one oldest-first page of simulated paper equity history."""
     from qtsurfer.api.client._generated.api.live_execution import get_live_run_paper_equity
 
-    return _parsed_call(
-        session,
-        lambda c: get_live_run_paper_equity.sync_detailed(
-            run_id, client=c, currency=currency, since_ms=since_ms, cursor=cursor, limit=limit
+    return cast(
+        LivePaperEquityPage | None,
+        _parsed_call(
+            session,
+            lambda c: get_live_run_paper_equity.sync_detailed(
+                run_id,
+                client=c,
+                currency=currency if currency is not None else UNSET,
+                since_ms=since_ms if since_ms is not None else UNSET,
+                cursor=cursor if cursor is not None else UNSET,
+                limit=limit if limit is not None else UNSET,
+            ),
         ),
     )
 
@@ -163,8 +185,11 @@ def send_live_command(
     body = SendLiveCommandRequest(command=command)
     if request_properties is not None:
         body.properties = request_properties
-    return _parsed_call(
-        session, lambda c: send_live_command.sync_detailed(run_id, client=c, body=body)
+    return cast(
+        LiveCommandResult | None,
+        _parsed_call(
+            session, lambda c: send_live_command.sync_detailed(run_id, client=c, body=body)
+        ),
     )
 
 
@@ -174,21 +199,30 @@ def start_live(
     """Start a live run using the generated request model, including its sandbox override."""
     from qtsurfer.api.client._generated.api.live_execution import start_live
 
-    return _parsed_call(
-        session, lambda c: start_live.sync_detailed(strategy_id, client=c, body=request)
+    return cast(
+        LiveRun | None,
+        _parsed_call(
+            session, lambda c: start_live.sync_detailed(strategy_id, client=c, body=request)
+        ),
     )
 
 
 def get_live(session: AuthenticatedSession, strategy_id: str) -> LiveRun | None:
     from qtsurfer.api.client._generated.api.live_execution import get_live
 
-    return _parsed_call(session, lambda c: get_live.sync_detailed(strategy_id, client=c))
+    return cast(
+        LiveRun | None,
+        _parsed_call(session, lambda c: get_live.sync_detailed(strategy_id, client=c)),
+    )
 
 
 def stop_live(session: AuthenticatedSession, strategy_id: str) -> LiveRun | None:
     from qtsurfer.api.client._generated.api.live_execution import stop_live
 
-    return _parsed_call(session, lambda c: stop_live.sync_detailed(strategy_id, client=c))
+    return cast(
+        LiveRun | None,
+        _parsed_call(session, lambda c: stop_live.sync_detailed(strategy_id, client=c)),
+    )
 
 
 def list_live(
@@ -196,8 +230,16 @@ def list_live(
 ) -> LiveListResponse | None:
     from qtsurfer.api.client._generated.api.live_execution import list_live
 
-    return _parsed_call(
-        session, lambda c: list_live.sync_detailed(client=c, cursor=cursor, limit=limit)
+    return cast(
+        LiveListResponse | None,
+        _parsed_call(
+            session,
+            lambda c: list_live.sync_detailed(
+                client=c,
+                cursor=cursor if cursor is not None else UNSET,
+                limit=limit if limit is not None else UNSET,
+            ),
+        ),
     )
 
 
@@ -207,8 +249,16 @@ def list_public_live(
     """List publicly visible live runs."""
     from qtsurfer.api.client._generated.api.live_execution import list_public_live
 
-    return _parsed_call(
-        session, lambda c: list_public_live.sync_detailed(client=c, cursor=cursor, limit=limit)
+    return cast(
+        PublicLiveListResponse | None,
+        _parsed_call(
+            session,
+            lambda c: list_public_live.sync_detailed(
+                client=c,
+                cursor=cursor if cursor is not None else UNSET,
+                limit=limit if limit is not None else UNSET,
+            ),
+        ),
     )
 
 
@@ -251,31 +301,32 @@ def get_live_signals(
         lambda c: get_live_run_signals.sync_detailed(
             run_id,
             client=c,
-            since_ms=since_ms,
-            instrument=instrument,
-            type_=signal_type,
-            cursor=cursor,
-            limit=limit,
+            since_ms=since_ms if since_ms is not None else UNSET,
+            instrument=instrument if instrument is not None else UNSET,
+            type_=signal_type if signal_type is not None else UNSET,
+            cursor=cursor if cursor is not None else UNSET,
+            limit=limit if limit is not None else UNSET,
         )
     )
     if response.status_code == 410:
         error = response.parsed
         available_since_ms = None
-        if hasattr(error, "message"):
+        error_message = getattr(error, "message", None)
+        if error_message:
             import re
 
-            match = re.search(r"availableSinceMs\D+(\d+)", error.message)
+            match = re.search(r"availableSinceMs\D+(\d+)", error_message)
             if match:
                 available_since_ms = int(match.group(1))
         raise QTSLiveSignalCursorExpiredError(
-            getattr(error, "message", "Live signal cursor expired; restart without cursor."),
+            error_message or "Live signal cursor expired; restart without cursor.",
             available_since_ms=available_since_ms,
         )
     if not 200 <= response.status_code < 300:
         error = response.parsed
         message = getattr(error, "message", None) or f"HTTP {response.status_code}"
         raise QTSError(message, status=response.status_code)
-    return response.parsed
+    return cast(LiveSignalPage | None, response.parsed)
 
 
 def get_next_live_signals(
@@ -310,19 +361,31 @@ def list_exchanges(session: AuthenticatedSession):
     return _parsed_call(session, lambda c: list_exchanges.sync_detailed(client=c))
 
 
-def list_instruments(session: AuthenticatedSession, exchange_id: str, segment: str | None = None):
-    """List an exchange's instruments, optionally for a segment."""
+def list_instruments(
+    session: AuthenticatedSession, exchange_id: str, segment: str | None = None
+) -> InstrumentListResponse | PoolListResponse | None:
+    """Read a CEX instrument or DEX pool envelope; ``meta.venue_type`` identifies it.
+
+    Omit ``segment`` for the exchange's default; otherwise use one of its discovered
+    segments. Missing market fields are ``UNSET`` rather than ``None``.
+    """
     from qtsurfer.api.client._generated.api.exchange import (
         list_instruments,
         list_segment_instruments,
     )
 
     if segment:
-        return _parsed_call(
-            session,
-            lambda c: list_segment_instruments.sync_detailed(exchange_id, segment, client=c),
+        return cast(
+            InstrumentListResponse | PoolListResponse | None,
+            _parsed_call(
+                session,
+                lambda c: list_segment_instruments.sync_detailed(exchange_id, segment, client=c),
+            ),
         )
-    return _parsed_call(session, lambda c: list_instruments.sync_detailed(exchange_id, client=c))
+    return cast(
+        InstrumentListResponse | PoolListResponse | None,
+        _parsed_call(session, lambda c: list_instruments.sync_detailed(exchange_id, client=c)),
+    )
 
 
 # -------------------------------------------------------------- strategies
@@ -383,7 +446,7 @@ def get_strategy_code(session: AuthenticatedSession, strategy_id: str) -> str:
     from qtsurfer.api.client._generated.api.strategy import get_strategy_code
 
     resp = _parsed_call(session, lambda c: get_strategy_code.sync_detailed(strategy_id, client=c))
-    return resp.code if resp is not None else ""
+    return str(resp.code) if resp is not None else ""
 
 
 # ---------------------------------------------------------------- backtest
@@ -474,8 +537,8 @@ def get_backtest_result(
     from qtsurfer.api.client._generated.api.backtesting import get_backtest_result  # noqa: F401
 
     httpx_client = session.client.get_httpx_client()
-    ds = DataSourceType(type_)
-    ds = ds.value if hasattr(ds, "value") else str(ds)
+    ds_enum = DataSourceType(type_)
+    ds = str(ds_enum.value) if hasattr(ds_enum, "value") else str(ds_enum)
     url = f"{session.base_url}/backtest/{exchange_id}/{ds}/execute/{job_id}"
     resp = session.call(lambda c: httpx_client.get(url))
     return resp

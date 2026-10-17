@@ -10,6 +10,8 @@ handling looks idiomatic across the three languages:
 
 from __future__ import annotations
 
+from qtsurfer.api.client.models import AuthTokenErrorCode, ErrorNextCall
+
 
 class QTSError(Exception):
     """Root of the QTSurfer SDK exception hierarchy.
@@ -24,9 +26,15 @@ class QTSError(Exception):
         *,
         status: int | None = None,
         cause: BaseException | None = None,
+        reason: str | None = None,
+        next_call: ErrorNextCall | None = None,
+        retry_after: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
+        self.reason = reason
+        self.next_call = next_call
+        self.retry_after = retry_after
         if cause is not None:
             self.__cause__ = cause
 
@@ -37,10 +45,39 @@ class QTSAuthError(QTSError):
     Triggered by:
 
     * No API key supplied (neither argument nor ``QTSURFER_APIKEY`` env var).
-    * ``POST /v1/auth/token`` returned a 4xx (typically 401 — invalid /
-      revoked / expired apikey).
+    * ``POST /v1/auth/token`` returned a 4xx (401 for an invalid, revoked or
+      expired key; 403 ``apikey_without_scopes`` where scopes are required).
     * The endpoint returned a 2xx but the body was empty or undecodeable.
     """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: int | None = None,
+        cause: BaseException | None = None,
+        reason: str | None = None,
+        next_call: ErrorNextCall | None = None,
+        retry_after: str | None = None,
+        code: AuthTokenErrorCode | None = None,
+        server_message: str | None = None,
+    ) -> None:
+        """Keep the typed authentication code and the server's exact message.
+
+        ``apikey_without_scopes`` needs a replacement key with scopes from the
+        web app. It is not retried automatically. ``message`` retains the HTTP
+        context in ``str(error)``; ``error.message`` is the server text when present.
+        """
+        super().__init__(
+            message,
+            status=status,
+            cause=cause,
+            reason=reason,
+            next_call=next_call,
+            retry_after=retry_after,
+        )
+        self.code = code
+        self.message = server_message if server_message is not None else message
 
 
 class QTSCompileError(QTSError):

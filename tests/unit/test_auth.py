@@ -20,11 +20,71 @@ from qtsurfer.api.client._generated.models import AuthTokenResponse
 
 from qtsurfer_sdk import (
     APIKEY_ENV_VAR,
+    AuthTokenErrorCode,
     InMemoryTokenStore,
     QTSAuthError,
     auth,
 )
 from qtsurfer_sdk._session import DEFAULT_BASE_URL, _resolve_apikey
+
+
+@pytest.mark.parametrize(
+    "status,code",
+    [
+        (403, AuthTokenErrorCode.APIKEY_WITHOUT_SCOPES),
+        (401, AuthTokenErrorCode.INVALID_APIKEY),
+        (401, AuthTokenErrorCode.APIKEY_REVOKED),
+        (401, AuthTokenErrorCode.APIKEY_EXPIRED),
+    ],
+)
+def test_auth_failure_preserves_code_message_and_status_without_retry(
+    httpx_mock, base_url, status, code
+):
+    message = "Create a key with at least one scope in the web app."
+    httpx_mock.add_response(
+        url=f"{base_url}/auth/token",
+        method="POST",
+        status_code=status,
+        json={"code": code.value, "message": message},
+    )
+    store = InMemoryTokenStore()
+
+    with pytest.raises(QTSAuthError) as result:
+        auth("ak_no_scopes", base_url=base_url, store=store)
+
+    error = result.value
+    assert error.status == status
+    assert error.code is code
+    assert error.message == message
+    assert message in str(error)
+    assert str(status) in str(error)
+    assert store.load() is None
+    assert len(httpx_mock.get_requests()) == 1
+
+
+def test_403_during_refresh_does_not_retry_the_original_operation(httpx_mock, base_url):
+    httpx_mock.add_response(url=f"{base_url}/auth/token", method="POST", json=_jwt_payload())
+    httpx_mock.add_response(url=f"{base_url}/exchanges", status_code=401)
+    httpx_mock.add_response(
+        url=f"{base_url}/auth/token",
+        method="POST",
+        status_code=403,
+        json={"code": "apikey_without_scopes", "message": "Create a key with a scope"},
+    )
+    session = auth("ak", base_url=base_url)
+
+    with pytest.raises(QTSAuthError) as result:
+        session.call(lambda client: client.get_httpx_client().get(f"{base_url}/exchanges"))
+
+    assert result.value.status == 403
+    assert result.value.code is AuthTokenErrorCode.APIKEY_WITHOUT_SCOPES
+    assert result.value.message == "Create a key with a scope"
+    assert [request.url.path for request in httpx_mock.get_requests()] == [
+        "/v1/auth/token",
+        "/v1/exchanges",
+        "/v1/auth/token",
+    ]
+
 
 # ---- Fixtures ----------------------------------------------------------------
 
@@ -224,7 +284,15 @@ class TestRefreshOn401:
         httpx_mock.add_response(
             url=f"{base_url}/exchanges",
             method="GET",
-            json=[{"id": "binance", "name": "Binance"}],
+            json=[
+                {
+                    "id": "binance",
+                    "name": "Binance",
+                    "venueType": "cex",
+                    "segments": ["spot"],
+                    "liveSegments": ["spot"],
+                }
+            ],
         )
 
         session = auth("ak", base_url=base_url)
@@ -310,7 +378,15 @@ class TestRefreshOn401:
         httpx_mock.add_response(
             url=f"{base_url}/exchanges",
             method="GET",
-            json=[{"id": "binance", "name": "Binance"}],
+            json=[
+                {
+                    "id": "binance",
+                    "name": "Binance",
+                    "venueType": "cex",
+                    "segments": ["spot"],
+                    "liveSegments": ["spot"],
+                }
+            ],
         )
 
         session = auth("ak", base_url=base_url)

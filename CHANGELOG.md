@@ -4,6 +4,34 @@ All notable changes to `qtsurfer-sdk` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2026-10-17
+
+### Added ✨
+
+- Discover decentralized pools through `list_instruments(exchange_id, segment)` while retaining
+  the typed catalogue envelope and `meta.venue_type`. Public exports include `PoolDetail`,
+  `PoolListResponse`, `InstrumentListResponse` and `InstrumentCatalogueResponse`.
+- Inspect nonempty API-key grants as a `KeyScopes` resource-to-actions map on token and account
+  responses. JSON-backed token stores preserve grants and metadata; historical empty arrays
+  round-trip as empty maps. Individual operation scopes are reported but not yet enforced.
+- Authentication `QTSAuthError` preserves `.status`, typed `.code`, and the server's exact
+  `.message`. A `403` `apikey_without_scopes` is not retried: create a key with at least one
+  scope in the web app where the deployment requires scopes.
+- Workflow `QTSError` now retains `.reason`, typed `.next_call`, and `.retry_after` so callers
+  can handle structured recovery without parsing the server message.
+- Guides cover DEX live sources, centralized-exchange history imports and their asynchronous
+  failures, and hourly binary adapters with provisional metadata and seven-day recovery.
+
+### Changed 🔄
+
+- Target OpenAPI `0.128.37`: live source venue types are `cex` / `dex` enums; exchange discovery
+  requires venue and segment metadata, instrument symbols are required, and absent market values
+  are `UNSET`. Replace old `venue_type="cx"` construction with `LiveSourceRequestVenueType.CEX`.
+- Hourly downloads use the API client's public binary adapters. Lastra timestamps are microseconds;
+  retain response headers and retry recent unavailable hours or import older history as a dataset.
+- Imports remain deliberate endpoint-layer operations through `session.call(...)`; the dataset
+  guide provides a complete typed CEX submission and resumable polling example.
+
 ## [0.4.2] — 2026-10-10
 
 ### Added

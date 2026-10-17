@@ -53,7 +53,18 @@ def _make_handler(stub: _Stub):
 
         def do_GET(self):  # noqa: N802
             stub.last_authorization = self.headers.get("Authorization")
-            self._respond(200, [{"id": "binance", "name": "Binance"}])
+            self._respond(
+                200,
+                [
+                    {
+                        "id": "binance",
+                        "name": "Binance",
+                        "venueType": "cex",
+                        "segments": ["spot"],
+                        "liveSegments": ["spot"],
+                    }
+                ],
+            )
 
         def _respond(self, status: int, payload: Any) -> None:
             body = json.dumps(payload).encode("utf-8")

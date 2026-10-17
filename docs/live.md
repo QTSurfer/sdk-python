@@ -12,11 +12,19 @@ session = auth()
 current run, and `stop_live(strategy_id)` requests a stop; poll state until it finishes.
 
 ```python
-from qtsurfer.api.client.models import LiveSource, LiveSourceType, StartLiveRequest
+from qtsurfer.api.client.models import (
+    LiveSourceRequest,
+    LiveSourceRequestType,
+    LiveSourceRequestVenueType,
+    StartLiveRequest,
+)
 
-source = LiveSource(
-    venue_type="cx", exchange="binance", segment="spot",
-    type_=LiveSourceType.TICKER, instruments=["ETH/USDT"],
+source = LiveSourceRequest(
+    venue_type=LiveSourceRequestVenueType.CEX,
+    exchange="binance",
+    segment="spot",
+    type_=LiveSourceRequestType.TICKER,
+    instruments=["ETH/USDT"],
 )
 run = session.start_live(
     strategy_id,
@@ -28,6 +36,40 @@ stopping = session.stop_live(strategy_id)
 
 `relay` defaults to `false`. Enable it only when a consumer needs live or retained signals, because
 retained signals consume shared account storage.
+
+Discover `venue_type`, exchange, and `live_segments` with `session.list_exchanges()`.
+Starts reject combinations outside that discovery with `400`; catalogue `futures` can exist
+without live data. Use the `cex` / `dex` enum spellings; legacy `cx` / `dx` are still accepted
+server-side but responses use the canonical values.
+
+For a DEX source, discover pools with `session.list_instruments("robinhood", "uniswap-v3")`,
+then supply exactly one pool address (not its symbol), `venue_type=LiveSourceRequestVenueType.DEX`,
+and `type_=LiveSourceRequestType.KLINE`. Instruments cannot be omitted or wildcarded.
+
+```python
+from qtsurfer_sdk import PoolListResponse
+
+pools = session.list_instruments("robinhood", "uniswap-v3")
+if not isinstance(pools, PoolListResponse) or not pools.data:
+    raise RuntimeError("No pools in this catalogue; choose another known pool address")
+dex_source = LiveSourceRequest(
+    venue_type=LiveSourceRequestVenueType.DEX,
+    exchange=pools.meta.exchange,
+    segment=pools.meta.segment,
+    type_=LiveSourceRequestType.KLINE,
+    instruments=[pools.data[0].id],
+)
+# strategy_id must name a compiled kline strategy.
+run = session.start_live(strategy_id, StartLiveRequest(sources=[dex_source]))
+```
+
+The feed emits one candle per second, including flat candles for seconds without trades;
+signal instruments use the pool's pair symbol. A newly followed pool replays warm-up at roughly
+six times market speed: the default can take a few minutes and `warm_from=3600` about ten;
+the run can show `LAGGING` while catching up. A pool already followed replays only the history
+available for it, which can be shorter than the requested warm-up.
+Invalid pools and pools the platform has no room to follow fail within seconds with
+`desired: STOPPED`, freeing the active slot. Treat unknown reason text as an opaque failure.
 
 Once a compiled strategy has passed its sandbox trial, subsequent runs start directly in `LIVE`.
 Pass `sandbox=True` in `StartLiveRequest` to run it through `SANDBOX` again, for example to inspect
@@ -60,9 +102,12 @@ run = session.start_live(
     StartLiveRequest(
         sources=[source],
         name="ETH paper run",
-        paper=LivePaperConfig(initial_funding=1_000, fee_rate=0.001,
-                              percent_amount_to_lock=20,
-                              output=LivePaperConfigOutput.MIX),
+        paper=LivePaperConfig(
+            initial_funding=1_000,
+            fee_rate=0.001,
+            percent_amount_to_lock=20,
+            output=LivePaperConfigOutput.MIX,
+        ),
     ),
 )
 paper = session.get_live_run_paper(run.run_id)

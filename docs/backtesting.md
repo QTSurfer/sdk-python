@@ -12,13 +12,21 @@ The Python SDK exposes explicit stages so applications can persist job ids and o
 requires `exchange_id`, `from_`, and `to`; set either `instrument` or `dataset_id` (optionally pin
 `dataset_version_id`). `type_` defaults to `ticker`; `cadence` is optional.
 
+Managed `ticker`, `funding`, and `kline` preparations accept the same fifteen labels:
+`1s`, `5s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`, `1d`,
+`1w`, `1q`; omitted means `1s`. Kline cadence selects bar width once at preparation.
+Dataset preparation defaults to its version's cadence and accepts an exact multiple
+of that cadence; `rt` data can be resampled to any fixed cadence.
+
 ```python
 compiled = session.compile_strategy(source)
 prepared = session.prepare(
     exchange_id="binance", type_="ticker", instrument="BTC/USDT", from_=from_, to=to
 )
 execution = session.execute(
-    exchange_id="binance", type_="ticker", prepare_job_id=prepared.job_id,
+    exchange_id="binance",
+    type_="ticker",
+    prepare_job_id=prepared.job_id,
     strategy_id=compiled.strategy_id,
 )
 response = session.get_backtest_result(
@@ -35,11 +43,16 @@ only when needed because it consumes account quota. `get_backtest_result(...)` r
 ```python
 status = session.get_prepare_status(exchange_id="binance", type_="ticker", job_id=prepared.job_id)
 execution = session.execute(
-    exchange_id="binance", type_="ticker", prepare_job_id=prepared.job_id,
-    strategy_id=compiled.strategy_id, store_signals=False,
+    exchange_id="binance",
+    type_="ticker",
+    prepare_job_id=prepared.job_id,
+    strategy_id=compiled.strategy_id,
+    store_signals=False,
 )
 response = session.get_backtest_result(
-    exchange_id="binance", type_="ticker", job_id=execution.job_id,
+    exchange_id="binance",
+    type_="ticker",
+    job_id=execution.job_id,
 )
 if response.status_code == 202:
     session.cancel_backtest(exchange_id="binance", type_="ticker", job_id=execution.job_id)
@@ -53,12 +66,16 @@ to samplers that use them; `walk_forward` selects fold-based validation.
 
 ```python
 sweep = session.sweep(
-    exchange_id="binance", type_="ticker", request_id=prepared.job_id,
+    exchange_id="binance",
+    type_="ticker",
+    request_id=prepared.job_id,
     strategy_id=compiled.strategy_id,
     params={"ema.fast": {"values": [9, 12]}, "ema.slow": {"values": [21, 26]}},
 )
 result = session.get_sweep_result(
-    exchange_id="binance", type_="ticker", request_id=prepared.job_id,
+    exchange_id="binance",
+    type_="ticker",
+    request_id=prepared.job_id,
     sweep_id=sweep.sweep_id,
 )
 ```

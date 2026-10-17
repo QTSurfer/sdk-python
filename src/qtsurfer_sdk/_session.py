@@ -21,6 +21,7 @@ from qtsurfer.api.client._generated.api.auth.authenticate import (
 )
 from qtsurfer.api.client._generated.models import AuthTokenError, AuthTokenResponse
 from qtsurfer.api.client._generated.types import Response
+from qtsurfer.api.client.models import InstrumentCatalogueResponse
 
 from qtsurfer_sdk._errors import QTSAuthError
 from qtsurfer_sdk._tokens import InMemoryTokenStore, TokenStore
@@ -94,9 +95,15 @@ class AuthenticatedSession:
                 client=self._mint_client
             )
             if resp.status_code != 200 or not isinstance(resp.parsed, AuthTokenResponse):
+                error = resp.parsed if isinstance(resp.parsed, AuthTokenError) else None
+                message = f"auth() failed: HTTP {resp.status_code}"
+                if error is not None:
+                    message += f": {error.message}"
                 raise QTSAuthError(
-                    f"auth() failed: HTTP {resp.status_code}",
+                    message,
                     status=int(resp.status_code),
+                    code=error.code if error is not None else None,
+                    server_message=error.message if error is not None else None,
                 )
             self._cached = resp.parsed
             self.store.save(resp.parsed)
@@ -282,8 +289,10 @@ class AuthenticatedSession:
 
         return wf.list_exchanges(self)
 
-    def list_instruments(self, exchange_id: str, segment: str | None = None):
-        """List an exchange's instruments, optionally for a segment."""
+    def list_instruments(
+        self, exchange_id: str, segment: str | None = None
+    ) -> InstrumentCatalogueResponse | None:
+        """Read a typed CEX instrument or DEX pool envelope for a discovered segment."""
         from qtsurfer_sdk import _workflows as wf
 
         return wf.list_instruments(self, exchange_id, segment)

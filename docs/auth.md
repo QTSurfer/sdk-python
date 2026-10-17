@@ -14,6 +14,25 @@ session = auth("ak_...", base_url="https://api.qtsurfer.net/v1")
 The session refreshes once after a `401` and retries that request once. A second failure surfaces to
 the caller.
 
+A deployment that requires scopes refuses an otherwise valid key with none at token exchange:
+`QTSAuthError.status == 403`, `.code == AuthTokenErrorCode.APIKEY_WITHOUT_SCOPES`
+(`apikey_without_scopes`). The exception's `.message` preserves the server's exact explanation;
+`str(error)` also includes HTTP context. No token is minted or saved, and the SDK does not retry
+that rejection. Create an API key with at least one scope in the web app and use the new key.
+This also applies if a token refresh fails during another request: the original operation is not
+retried after the rejected refresh.
+
+```python
+from qtsurfer_sdk import AuthTokenErrorCode, QTSAuthError, auth
+
+try:
+    session = auth()
+except QTSAuthError as error:
+    if error.code == AuthTokenErrorCode.APIKEY_WITHOUT_SCOPES:
+        print("Create an API key with at least one scope in the web app.")
+    raise
+```
+
 ## Manage token storage
 
 Pass a `TokenStore` implementation to load, save, and clear JWTs in the application's chosen store.
@@ -31,16 +50,32 @@ session.clear()
 `ensure_token()` reuses memory or stored state, `refresh()` always exchanges the API key again, and
 `clear()` clears the cache and configured store.
 
+The token's optional `scopes` is a `KeyScopes` resource-to-actions map, for example
+`{"backtests": ["read", "write", "execute"], "exchanges": ["read"]}`. An empty map
+means no scopes. Each listed resource has at least one action: a scope is a resource and
+an action. Inspect `token.scopes.to_dict()` when present; the same map is required
+on `session.get_account().scopes`. The API reports these grants but does not yet enforce
+individual operation scopes. Custom token stores should persist `token.to_dict()` and
+restore with `AuthTokenResponse.from_dict(...)`, preserving the entire map and tier.
+Historical stored `scopes: []` is read as the empty map and saved back as `{}`.
+
 ## Call a generated endpoint
 
 `session.call(fn)` applies the same refresh-on-401 policy when the SDK has no high-level wrapper.
 Binary download responses must be consumed as bytes rather than parsed as JSON.
 
 ```python
-from qtsurfer.api.client._generated.api.exchange import download_tickers
+from datetime import UTC, datetime, timedelta
+from qtsurfer.api.client.api.exchange import download_tickers
 
-response = session.call(lambda client: download_tickers.sync_detailed(
-    "binance", "BTC", "USDT", client=client
-))
+response = session.call(
+    lambda client: download_tickers.sync_detailed(
+        "binance",
+        "BTC",
+        "USDT",
+        client=client,
+        hour=(datetime.now(UTC) - timedelta(hours=1)).strftime("%Y-%m-%dT%H"),
+    )
+)
 payload = response.content
 ```

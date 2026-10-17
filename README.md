@@ -74,38 +74,50 @@ typed model objects.
 ### Strategy
 
 ```python
-src = '''public class EmaCross extends AbstractTickerStrategy { ... }'''
+src = """public class EmaCross extends AbstractTickerStrategy { ... }"""
 
-comp = session.compile_strategy(src)       # CompileStrategyResponse200
+comp = session.compile_strategy(src)  # CompileStrategyResponse200
 sid = comp.strategy_id
 
-session.validate_strategy(sid)             # 202/pending or already-recorded verdict
-state = session.get_strategy(sid)          # validation, notices, requiredSources
-session.list_strategies()                  # your registered strategies
-code = session.get_strategy_code(sid)      # read back the exact source
-session.delete_strategy(sid)               # release it
+session.validate_strategy(sid)  # 202/pending or already-recorded verdict
+state = session.get_strategy(sid)  # validation, notices, requiredSources
+session.list_strategies()  # your registered strategies
+code = session.get_strategy_code(sid)  # read back the exact source
+session.delete_strategy(sid)  # release it
 ```
 
 ### Catalog
 
 ```python
-session.list_exchanges()                              # [Exchange, ...]
-session.list_instruments("binance")                   # 1876 instruments
-session.list_instruments("binance", segment="spot")   # a specific segment
+session.list_exchanges()  # [Exchange, ...]
+session.list_instruments("binance")  # typed instrument envelope
+session.list_instruments("binance", segment="spot")  # a specific segment
+session.list_instruments("robinhood", segment="uniswap-v3")  # typed DEX pool envelope
 ```
+
+Catalogue responses retain `data`, `meta`, and links; read `catalogue.data` for entries.
+Discovery reports `venue_type`, `segments` and `live_segments`; see the
+[exchange guide](https://github.com/QTSurfer/sdk-python/blob/main/docs/exchange.md) for
+pool discovery, missing values and recent-hour binary downloads. Token and account `scopes`
+are resource-to-actions maps (`KeyScopes`), preserved by token stores; see the
+[authentication guide](https://github.com/QTSurfer/sdk-python/blob/main/docs/auth.md).
 
 ### Backtest
 
 ```python
 # 1. prepare a data window -> a job id
 acc = session.prepare(
-    exchange_id="binance", type_="ticker",
-    instrument="BTC/USDT", from_="2026-08-18", to="2026-08-19",
+    exchange_id="binance",
+    type_="ticker",
+    instrument="BTC/USDT",
+    from_="2026-08-18",
+    to="2026-08-19",
 )
 pid = acc.job_id
 
 # 2. poll until Completed
 import time
+
 while True:
     st = session.get_prepare_status(exchange_id="binance", type_="ticker", job_id=pid)
     if st.status == "Completed":
@@ -114,8 +126,10 @@ while True:
 
 # 3. execute a compiled strategy over the prepared window
 ex = session.execute(
-    exchange_id="binance", type_="ticker",
-    prepare_job_id=pid, strategy_id=sid,
+    exchange_id="binance",
+    type_="ticker",
+    prepare_job_id=pid,
+    strategy_id=sid,
 )
 jid = ex.job_id
 
@@ -134,8 +148,9 @@ while True:
 
 ```python
 accepted = session.sweep(
-    exchange_id="binance", type_="ticker",
-    request_id=pid,                     # the prepare job id
+    exchange_id="binance",
+    type_="ticker",
+    request_id=pid,  # the prepare job id
     strategy_id=sid,
     params={"cycle.seconds": {"values": [10, 20, 30]}},  # note: annotation name, not field
     objective="sharpe",
@@ -147,7 +162,7 @@ for row in res.leaderboard:
     print(row.rank, row.sharpe, row.params)
 
 session.get_sweep_sensitivity(exchange_id="binance", type_="ticker", request_id=pid, sweep_id=swid)
-session.get_sweep_run_equity_curve(..., run_ix=0) # a retained trial's curve
+session.get_sweep_run_equity_curve(..., run_ix=0)  # a retained trial's curve
 session.cancel_sweep(...)
 ```
 
@@ -162,8 +177,12 @@ session.finalize_dataset_upload(dataset_id=created.dataset_id, upload_id=created
 state = session.get_dataset_upload(dataset_id=created.dataset_id, upload_id=created.upload_id)
 # state.status == "ready" -> backtest against it with exchange_id="user":
 acc = session.prepare(
-    exchange_id="user", type_="ticker", dataset_id=created.dataset_id,
-    dataset_version_id=state.version.id, from_=..., to=...,
+    exchange_id="user",
+    type_="ticker",
+    dataset_id=created.dataset_id,
+    dataset_version_id=state.version.id,
+    from_=...,
+    to=...,
 )
 
 session.list_datasets()
@@ -198,10 +217,10 @@ Every workflow goes through the session's underlying generated
 inspect a raw `Response`:
 
 ```python
-from qtsurfer.api.client._generated.api.exchange import get_exchanges
+from qtsurfer.api.client.api.exchange import list_exchanges
 
-session.call(lambda c: get_exchanges.sync(client=c))          # plain
-resp = session.call(lambda c: get_exchanges.sync_detailed(client=c))  # raw Response
+session.call(lambda c: list_exchanges.sync(client=c))  # plain
+resp = session.call(lambda c: list_exchanges.sync_detailed(client=c))  # raw Response
 ```
 
 ## Environment
@@ -221,12 +240,24 @@ from pathlib import Path
 from qtsurfer.api.client._generated.models import AuthTokenResponse
 from qtsurfer_sdk import TokenStore, auth
 
+
 class FileStore(TokenStore):
-    def __init__(self, path: Path): self.path = path
+    def __init__(self, path: Path):
+        self.path = path
+
     def load(self) -> AuthTokenResponse | None:
-        return AuthTokenResponse.from_dict(json.loads(self.path.read_text())) if self.path.exists() else None
-    def save(self, token: AuthTokenResponse) -> None: self.path.write_text(json.dumps(token.to_dict()))
-    def clear(self) -> None: self.path.unlink(missing_ok=True)
+        return (
+            AuthTokenResponse.from_dict(json.loads(self.path.read_text()))
+            if self.path.exists()
+            else None
+        )
+
+    def save(self, token: AuthTokenResponse) -> None:
+        self.path.write_text(json.dumps(token.to_dict()))
+
+    def clear(self) -> None:
+        self.path.unlink(missing_ok=True)
+
 
 session = auth(store=FileStore(Path.home() / ".qtsurfer" / "token.json"))
 ```
@@ -240,7 +271,11 @@ from qtsurfer_sdk import QTSError, QTSAuthError, QTSPreparationError, QTSExecuti
 * `QTSError` — base for all SDK errors (carries optional `.status`).
   Workflow methods raise it for non-2xx HTTP responses; `.status` contains the HTTP status and
   the exception message uses the server-provided error message when available.
+  `.reason`, `.next_call` (`ErrorNextCall`) and `.retry_after` preserve structured recovery
+  instructions when provided. Unknown reason tokens should be handled like absent ones.
 * `QTSAuthError` — missing/invalid apikey, or non-2xx from `POST /auth/token`.
+  `.code` preserves `AuthTokenErrorCode` and `.message` the server text. A `403`
+  `apikey_without_scopes` is not retried; create an API key with at least one scope in the web app.
 * `QTSCompileError` — `POST /strategy` could not compile/register.
 * `QTSPreparationError` — a `prepare` stage failed.
 * `QTSExecutionError` — a backtest/sweep execution failed.
@@ -248,8 +283,6 @@ from qtsurfer_sdk import QTSError, QTSAuthError, QTSPreparationError, QTSExecuti
 
 ## Roadmap
 
-* **v0.1 — auth helper** ✅
-* **v0.2 — high-level workflows** ✅ (strategies, catalog, backtest, sweep, datasets)
 * **v0.3 — async overload** mirroring `*_asyncio` api-client variants
 * **v0.4 — domain handles** (`Strategy`, `Backtest`) with progress callbacks
 

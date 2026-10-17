@@ -10,6 +10,7 @@ session = auth()  # reads QTSURFER_APIKEY
 
 `get_account()` returns the account id, tier, dataset caps, total storage cap, and
 `max_sweep_cartesian`, the maximum number of combinations for a full Cartesian sweep.
+It also returns `scopes`, the API key's resource-to-actions map (see [authentication](auth.md)).
 
 ```python
 account = session.get_account()

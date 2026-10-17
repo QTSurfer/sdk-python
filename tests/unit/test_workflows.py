@@ -30,7 +30,7 @@ def token(httpx_mock: HTTPXMock):
             "access_token": "jwt-token",
             "token_type": "Bearer",
             "expires_in": 3600,
-            "scopes": [],
+            "scopes": {},
             "tier": "free",
         },
     )
@@ -46,7 +46,16 @@ def test_auth_mints_jwt(token):
 def test_list_exchanges_returns_list(token, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
         url=f"{BASE}/exchanges",
-        json=[{"id": "binance", "name": "Binance", "description": "Binance exchange"}],
+        json=[
+            {
+                "id": "binance",
+                "name": "Binance",
+                "description": "Binance exchange",
+                "venueType": "cex",
+                "segments": ["spot"],
+                "liveSegments": ["spot"],
+            }
+        ],
         headers={"content-type": "application/json"},
     )
     ex = wf.list_exchanges(token)
@@ -201,14 +210,23 @@ def test_list_exchanges_refreshes_and_retries_401(token, httpx_mock: HTTPXMock):
             "access_token": "jwt-refreshed",
             "token_type": "Bearer",
             "expires_in": 3600,
-            "scopes": [],
+            "scopes": {},
             "tier": "free",
         },
     )
     httpx_mock.add_response(url=f"{BASE}/exchanges", status_code=401)
     httpx_mock.add_response(
         url=f"{BASE}/exchanges",
-        json=[{"id": "binance", "name": "Binance", "description": "Binance exchange"}],
+        json=[
+            {
+                "id": "binance",
+                "name": "Binance",
+                "description": "Binance exchange",
+                "venueType": "cex",
+                "segments": ["spot"],
+                "liveSegments": ["spot"],
+            }
+        ],
         headers={"content-type": "application/json"},
     )
 
@@ -230,7 +248,7 @@ def test_compile_strategy_refreshes_and_returns_typed_model(token, httpx_mock: H
             "access_token": "jwt-refreshed",
             "token_type": "Bearer",
             "expires_in": 3600,
-            "scopes": [],
+            "scopes": {},
             "tier": "free",
         },
     )

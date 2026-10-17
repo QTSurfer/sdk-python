@@ -72,3 +72,78 @@ Run against a ready version with `exchange_id="user"`, `dataset_id`, and optiona
 
 Dataset imports from an existing platform source are available through the generated
 `qtsurfer-api-client`; this SDK currently wraps user-file upload and lifecycle operations only.
+
+## Import exchange history
+
+Imports deliberately stay at the endpoint layer: use `session.call(...)` for both submission
+and polling, retaining refresh-on-401. A CEX source must name a discovered centralized exchange,
+`segment="spot"` (the only supported import segment), and `data_type=TICKER` or `KLINES`.
+The dataset's type follows that choice. DEX exchange ids are rejected for CEX imports;
+use a `DatasetImportDexRequest` with `type_=DEX` for pool history instead.
+
+```python
+import time
+from datetime import UTC, datetime, timedelta
+from qtsurfer.api.client.api.dataset import import_dataset, get_dataset_import
+from qtsurfer.api.client.models import (
+    DatasetImportRequest,
+    DatasetImportRequestType,
+    DatasetImportCexRequest,
+    DatasetImportCexRequestSegment,
+    DatasetImportCexRequestDataType,
+    DatasetImportCreated,
+    DatasetImportState,
+)
+
+end = datetime.now(UTC) - timedelta(days=8)
+request = DatasetImportRequest(
+    name="BTC history",
+    instrument="BTC/USDT",
+    from_=end - timedelta(hours=1),
+    to=end,
+    type_=DatasetImportRequestType.CEX,
+    cex=DatasetImportCexRequest(
+        exchange="binance",
+        segment=DatasetImportCexRequestSegment.SPOT,
+        data_type=DatasetImportCexRequestDataType.KLINES,
+    ),
+)
+response = session.call(lambda client: import_dataset.sync_detailed(client=client, body=request))
+if response.status_code != 202 or not isinstance(response.parsed, DatasetImportCreated):
+    raise RuntimeError(f"Import refused: {response.status_code} {response.parsed}")
+created = response.parsed  # initial datasetId/importId/jobId only; not a ready version
+deadline = time.monotonic() + 900
+while True:
+    response = session.call(
+        lambda client: get_dataset_import.sync_detailed(
+            created.dataset_id,
+            created.import_id,
+            client=client,
+        )
+    )
+    if response.status_code != 200 or not isinstance(response.parsed, DatasetImportState):
+        raise RuntimeError(f"Import status failed: {response.status_code} {response.parsed}")
+    state = response.parsed
+    if state.status.value == "ready":
+        break  # state.version is now usable in a dataset-backed prepare
+    if state.status.value == "failed":
+        raise RuntimeError(state.error)
+    if time.monotonic() >= deadline:
+        raise TimeoutError("Import still running; keep its dataset and import ids to resume")
+    time.sleep(3)
+```
+
+`cadence` defaults to the finest cadence every part of a CEX range holds. To choose one,
+pass `DatasetImportRequestCadence(...)`: `1s`, `5s`, `1m`, `3m`, `5m`, `15m`, `30m`,
+`1h`, `2h`, `4h`, `8h`, `12h`, `1d`, `1w`, `1q` for both ticker and kline imports.
+A finer cadence than the range holds, or an inexact multiple, fails asynchronously;
+`state.error` names the finest available cadence. A mixed-history range is uniformly
+coarsened when cadence is omitted. DEX accepts only `1s`, `1m`, `5m`, or omission for
+native per-trade history; unsupported source/cadence combinations can fail asynchronously.
+
+Read `session.get_account().max_import_range_hours` before choosing a range. Imports count
+against dataset-count, per-dataset byte, total-storage and execution-time limits; `403`
+reports tier/quota restrictions, `400` malformed inputs, and failed states include no data,
+unresolvable pool, old source history, cadence or time-ceiling failures. Persist ids to
+resume polling instead of resubmitting and creating another dataset. A ready dataset uses
+the same `exchange_id="user"` preparation path as uploads; only the ready version is usable.
