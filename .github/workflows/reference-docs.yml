@@ -1,0 +1,52 @@
+name: Reference documentation archive
+
+# Attaches the generated pdoc of a release to that release, as a tar.gz with its checksum, so the
+# QTSurfer website can publish it. It runs after every release (see publish.yml) and by hand to build
+# the archive of a release that already exists.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to document
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to document
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check that the release exists
+        run: gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      # docs/ holds the written guides, so the generated pages go to a clean directory of
+      # their own instead of through scripts/docs.sh, which writes into docs/.
+      - name: Generate docs
+        run: uv run pdoc -o "$RUNNER_TEMP/reference" qtsurfer_sdk
+      - name: Package the documentation
+        run: |
+          name="sdk-python-docs-${TAG}"
+          tar -czf "${name}.tar.gz" -C "$RUNNER_TEMP/reference" .
+          sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256"
+      - name: Attach it to the release
+        run: |
+          name="sdk-python-docs-${TAG}"
+          gh release upload "$TAG" "${name}.tar.gz" "${name}.tar.gz.sha256" \
+            --repo "$GITHUB_REPOSITORY" --clobber
