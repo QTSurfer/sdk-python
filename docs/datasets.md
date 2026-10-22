@@ -47,6 +47,9 @@ state = session.get_dataset_upload(
 Poll `get_dataset_upload(dataset_id, upload_id)` until the state is ready or failed. Only a ready
 version is usable; it records the discovered range, cadence, row count, and gap details. See the API
 [dataset reference](https://www.qtsurfer.com/docs/developers/api/datasets) for CSV columns and validation.
+Once ready, `Dataset.type_` describes the ingested rows rather than the way they were created: a
+file of candles is `klines`, and a `kline` backtest requires a ready `klines` version. A `ticker`
+backtest accepts either type. Before the first version is ready, the type is only the creation label.
 
 The upload helper accepts either a `pathlib.Path` or an open binary file. It closes files it opens,
 but leaves caller-owned file handles open. Upload/network failures raise `QTSUploadError`; the SDK

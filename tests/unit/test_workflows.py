@@ -16,7 +16,14 @@ import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
-from qtsurfer_sdk import QTSError, QTSUploadError, auth
+from qtsurfer_sdk import (
+    EquityCurveOutMode,
+    GetLiveRunPaperEquityMeasure,
+    QTSError,
+    QTSInsufficientScopeError,
+    QTSUploadError,
+    auth,
+)
 from qtsurfer_sdk import _workflows as wf
 
 BASE = "https://api.example/v1"
@@ -139,10 +146,56 @@ def test_workflow_http_errors_raise_qts_error(token, httpx_mock, method, path, s
     assert exc_info.value.status == status
 
 
+def test_workflow_scope_error_preserves_required_scope(token, httpx_mock):
+    httpx_mock.add_response(
+        url=f"{BASE}/datasets/missing",
+        status_code=403,
+        json={
+            "code": "insufficient_scope",
+            "message": "This operation requires datasets:read.",
+            "required": "datasets:read",
+        },
+    )
+
+    with pytest.raises(QTSInsufficientScopeError) as exc_info:
+        token.get_dataset("missing")
+
+    assert exc_info.value.status == 403
+    assert exc_info.value.code.value == "insufficient_scope"
+    assert exc_info.value.required == "datasets:read"
+
+
+def test_workflow_error_preserves_retryable_flag(token, httpx_mock):
+    httpx_mock.add_response(
+        url=f"{BASE}/backtest/binance/ticker/execute",
+        method="POST",
+        status_code=429,
+        headers={"Retry-After": "5"},
+        json={"code": "RATE_LIMITED", "message": "Try again later", "retryable": True},
+    )
+
+    with pytest.raises(QTSError, match="Try again later") as exc_info:
+        token.execute(
+            exchange_id="binance",
+            type_="ticker",
+            prepare_job_id="prepare-1",
+            strategy_id="strategy-1",
+        )
+
+    assert exc_info.value.retryable is True
+    assert exc_info.value.retry_after == "5"
+
+
 def test_live_paper_equity_command_and_deleted_catalogues(token, httpx_mock):
     equity_url = f"{BASE}/live/run-1/paper/equity"
-    equity_query = "currency=USDT&sinceMs=123&limit=4"
-    next_equity_query = "currency=USDT&sinceMs=123&cursor=next&limit=4"
+    equity_query = (
+        "currency=USDT&instrument=BTC%2FUSDT&measure=totalPnl&sinceMs=0"
+        "&outMode=SHORT&differential=true&limit=4"
+    )
+    next_equity_query = (
+        "currency=USDT&instrument=BTC%2FUSDT&measure=totalPnl&sinceMs=0"
+        "&outMode=SHORT&differential=true&limit=4&cursor=next"
+    )
     httpx_mock.add_response(
         url=f"{BASE}/live/run-1/paper",
         json={
@@ -154,11 +207,40 @@ def test_live_paper_equity_command_and_deleted_catalogues(token, httpx_mock):
     httpx_mock.add_response(
         url=f"{equity_url}?{equity_query}",
         json={
-            "points": [],
+            "meta": {
+                "inputPointCount": 0,
+                "outputPointCount": 0,
+                "resampled": False,
+                "differential": True,
+                "outMode": "SHORT",
+            },
+            "measure": "totalPnl",
+            "gaps": [],
+            "timestamps": [],
+            "equities": [],
+            "currency": "USDT",
+            "instrument": "BTC/USDT",
             "_links": {"next": {"href": f"{equity_url}?{next_equity_query}"}},
         },
     )
-    httpx_mock.add_response(url=f"{equity_url}?{next_equity_query}", json={"points": []})
+    httpx_mock.add_response(
+        url=f"{equity_url}?{next_equity_query}",
+        json={
+            "meta": {
+                "inputPointCount": 0,
+                "outputPointCount": 0,
+                "resampled": False,
+                "differential": True,
+                "outMode": "SHORT",
+            },
+            "measure": "totalPnl",
+            "gaps": [],
+            "timestamps": [],
+            "equities": [],
+            "currency": "USDT",
+            "instrument": "BTC/USDT",
+        },
+    )
     httpx_mock.add_response(
         url=f"{BASE}/live/run-1/commands",
         method="POST",
@@ -169,8 +251,19 @@ def test_live_paper_equity_command_and_deleted_catalogues(token, httpx_mock):
     httpx_mock.add_response(url=f"{BASE}/datasets?includeDeleted=true", json={"datasets": []})
 
     assert token.get_live_run_paper("run-1").run_id == "run-1"
-    equity = token.get_live_run_paper_equity("run-1", currency="USDT", since_ms=123, limit=4)
-    assert token.get_next_live_run_paper_equity("run-1", equity).points == []
+    equity = token.get_live_run_paper_equity(
+        "run-1",
+        currency="USDT",
+        instrument="BTC/USDT",
+        measure=GetLiveRunPaperEquityMeasure.TOTALPNL,
+        since_ms=0,
+        out_mode=EquityCurveOutMode.SHORT,
+        differential=True,
+        limit=4,
+    )
+    next_equity = token.get_next_live_run_paper_equity("run-1", equity)
+    assert next_equity.equities == []
+    assert next_equity.instrument == "BTC/USDT"
     command = token.send_live_command("run-1", "rebalance", properties={"targetWeight": 0.25})
     assert command.command_id == "cmd-1"
     assert token.list_strategies(include_deleted=True).strategies == []
@@ -183,7 +276,11 @@ def test_live_paper_equity_command_and_deleted_catalogues(token, httpx_mock):
     assert command_request.read() == b'{"command":"rebalance","properties":{"targetWeight":0.25}}'
     continued = next(request for request in requests if request.url.params.get("cursor") == "next")
     assert continued.url.params["currency"] == "USDT"
-    assert continued.url.params["sinceMs"] == "123"
+    assert continued.url.params["instrument"] == "BTC/USDT"
+    assert continued.url.params["measure"] == "totalPnl"
+    assert continued.url.params["sinceMs"] == "0"
+    assert continued.url.params["outMode"] == "SHORT"
+    assert continued.url.params["differential"] == "true"
     assert continued.url.params["limit"] == "4"
 
 
@@ -267,6 +364,24 @@ def test_compile_strategy_refreshes_and_returns_typed_model(token, httpx_mock: H
     ]
     assert len(requests) == 2
     assert requests[-1].headers["Authorization"] == "Bearer jwt-refreshed"
+
+
+def test_compile_strategy_scope_error_is_typed(token, httpx_mock):
+    httpx_mock.add_response(
+        url=f"{BASE}/strategy",
+        method="POST",
+        status_code=403,
+        json={
+            "code": "insufficient_scope",
+            "message": "This operation requires strategies:write.",
+            "required": "strategies:write",
+        },
+    )
+
+    with pytest.raises(QTSInsufficientScopeError) as exc_info:
+        token.compile_strategy("public class Strategy {}")
+
+    assert exc_info.value.required == "strategies:write"
 
 
 def test_prepare_passes_dataset_version_id(token, httpx_mock: HTTPXMock):

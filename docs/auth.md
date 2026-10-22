@@ -54,8 +54,8 @@ The token's optional `scopes` is a `KeyScopes` resource-to-actions map, for exam
 `{"backtests": ["read", "write", "execute"], "exchanges": ["read"]}`. An empty map
 means no scopes. Each listed resource has at least one action: a scope is a resource and
 an action. Inspect `token.scopes.to_dict()` when present; the same map is required
-on `session.get_account().scopes`. The API reports these grants but does not yet enforce
-individual operation scopes. Custom token stores should persist `token.to_dict()` and
+on `session.get_account().scopes`. Protected operations enforce their required scopes and return
+`403 insufficient_scope` when the key lacks one. Custom token stores should persist `token.to_dict()` and
 restore with `AuthTokenResponse.from_dict(...)`, preserving the entire map and tier.
 Historical stored `scopes: []` is read as the empty map and saved back as `{}`.
 
@@ -63,6 +63,8 @@ Historical stored `scopes: []` is read as the empty map and saved back as `{}`.
 
 `session.call(fn)` applies the same refresh-on-401 policy when the SDK has no high-level wrapper.
 Binary download responses must be consumed as bytes rather than parsed as JSON.
+An operation-level scope refusal is not refreshed or retried: catch `QTSInsufficientScopeError`,
+inspect its `required` scope, and grant that scope to the API key before retrying.
 
 ```python
 from datetime import UTC, datetime, timedelta

@@ -10,7 +10,11 @@ handling looks idiomatic across the three languages:
 
 from __future__ import annotations
 
-from qtsurfer.api.client.models import AuthTokenErrorCode, ErrorNextCall
+from qtsurfer.api.client.models import (
+    AuthTokenErrorCode,
+    ErrorNextCall,
+    InsufficientScopeErrorCode,
+)
 
 
 class QTSError(Exception):
@@ -29,12 +33,14 @@ class QTSError(Exception):
         reason: str | None = None,
         next_call: ErrorNextCall | None = None,
         retry_after: str | None = None,
+        retryable: bool | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.reason = reason
         self.next_call = next_call
         self.retry_after = retry_after
+        self.retryable = retryable
         if cause is not None:
             self.__cause__ = cause
 
@@ -78,6 +84,22 @@ class QTSAuthError(QTSError):
         )
         self.code = code
         self.message = server_message if server_message is not None else message
+
+
+class QTSInsufficientScopeError(QTSError):
+    """Raised when an authenticated operation lacks its required API-key scope."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        required: str,
+        status: int = 403,
+        cause: BaseException | None = None,
+    ) -> None:
+        super().__init__(message, status=status, cause=cause)
+        self.code = InsufficientScopeErrorCode.INSUFFICIENT_SCOPE
+        self.required = required
 
 
 class QTSCompileError(QTSError):

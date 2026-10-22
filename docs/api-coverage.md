@@ -1,6 +1,6 @@
 # API coverage
 
-This update targets API spec **0.128.37** through `qtsurfer-api-client==0.128.37`.
+This update targets API spec **0.128.46** through `qtsurfer-api-client==0.128.46`.
 Every OpenAPI operation is accounted for below. Endpoint-only entries
 are deliberate choices, called with `session.call(...)`.
 
@@ -13,7 +13,7 @@ are deliberate choices, called with `session.call(...)`.
 | Sweeps | `sweep`, `get_sweep_result`, `get_sweep_sensitivity`, `get_sweep_run_equity_curve`, `cancel_sweep` | The caller owns pagination and polling policy. |
 | Dataset | `create_dataset`, `list_datasets(include_deleted)`, `get_dataset`, `delete_dataset`, `open_dataset_upload`, `upload_dataset_file`, `finalize_dataset_upload`, `get_dataset_upload` | `import_dataset` and `get_dataset_import` remain generated-client operations. Deleted entries carry `deleted_at`; presigned upload bytes never carry the API token. |
 | Account | `get_account`, `get_account_usage` | `max_sweep_cartesian` reports the account's Cartesian sweep cap; check shared storage before retaining signals. |
-| Live Execution | `start_live`, `get_live`, `stop_live`, `list_live`, `list_public_live`, `update_live`, `update_live_params`, `send_live_command`, `get_live_signals`, `get_next_live_signals`, `get_live_run_paper`, `get_live_run_paper_equity`, `get_next_live_run_paper_equity` | Paper simulation is opt-in. Signal and paper-equity continuation preserve filters. `mint_live_connection_token` remains generated-client only because the SDK has no managed WebSocket client. |
+| Live Execution | `start_live`, `get_live`, `stop_live`, `list_live`, `list_public_live`, `update_live`, `update_live_params`, `send_live_command`, `get_live_signals`, `get_next_live_signals`, `get_live_run_paper`, `get_live_run_paper_equity`, `get_next_live_run_paper_equity` | Paper simulation is opt-in; accounts can be per currency or per instrument. Paper equity exposes the shared curve contract and continuation preserves filters. `mint_live_connection_token` remains generated-client only because the SDK has no managed WebSocket client. |
 
 The generated `qtsurfer-api-client` is the endpoint-level escape hatch, not a competing SDK
 surface. Its version is pinned with the SDK, so callers must not assume it exposes a newer API spec.

@@ -4,6 +4,23 @@ All notable changes to `qtsurfer-sdk` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-10-23
+
+### Added ✨
+
+- Raise `QTSInsufficientScopeError` for protected operations refused with `403`; it exposes the
+  typed `insufficient_scope` code and required `resource:action` scope.
+- Read the revised paper-equity curve with account or instrument selection, PnL measures, transforms,
+  and continuation that preserves all filters. Paper results now expose per-instrument metrics and
+  mark-to-market positions.
+- Preserve the API's `retryable` flag on generic workflow `QTSError` instances.
+
+### Changed 🔄
+
+- Target OpenAPI `0.128.46` through `qtsurfer-api-client==0.128.46`.
+- A ready dataset's type reflects its ingested data, and kline preparation requires a `klines` version.
+- Paper accounts can be shared by quote currency or isolated per instrument.
+
 ## [0.5.0] — 2026-10-17
 
 ### Added ✨

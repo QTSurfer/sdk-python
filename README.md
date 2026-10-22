@@ -268,11 +268,14 @@ session = auth(store=FileStore(Path.home() / ".qtsurfer" / "token.json"))
 from qtsurfer_sdk import QTSError, QTSAuthError, QTSPreparationError, QTSExecutionError
 ```
 
-* `QTSError` — base for all SDK errors (carries optional `.status`).
+* `QTSError` — base for all SDK errors (carries optional `.status` and `.retryable`).
   Workflow methods raise it for non-2xx HTTP responses; `.status` contains the HTTP status and
   the exception message uses the server-provided error message when available.
-  `.reason`, `.next_call` (`ErrorNextCall`) and `.retry_after` preserve structured recovery
-  instructions when provided. Unknown reason tokens should be handled like absent ones.
+  `.reason`, `.next_call` (`ErrorNextCall`), `.retry_after`, and `.retryable` preserve structured
+  recovery information when provided. Unknown reason tokens should be handled like absent ones.
+* `QTSInsufficientScopeError` — a protected operation returned `403`; `.required` names the missing
+  `resource:action` scope and `.code` is `InsufficientScopeErrorCode.INSUFFICIENT_SCOPE`. Grant the
+  scope to the key before retrying; this is not an authentication refresh condition.
 * `QTSAuthError` — missing/invalid apikey, or non-2xx from `POST /auth/token`.
   `.code` preserves `AuthTokenErrorCode` and `.message` the server text. A `403`
   `apikey_without_scopes` is not retried; create an API key with at least one scope in the web app.

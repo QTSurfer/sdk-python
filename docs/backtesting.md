@@ -17,6 +17,9 @@ Managed `ticker`, `funding`, and `kline` preparations accept the same fifteen la
 `1w`, `1q`; omitted means `1s`. Kline cadence selects bar width once at preparation.
 Dataset preparation defaults to its version's cadence and accepts an exact multiple
 of that cadence; `rt` data can be resampled to any fixed cadence.
+For `exchange_id="user"`, `type_="kline"` requires the selected ready dataset version to have
+`type_ == "klines"`; `type_="ticker"` accepts either ticker or candle data. The type is inferred
+from ingested rows, so a candle CSV upload is a `klines` dataset once its version is ready.
 
 ```python
 compiled = session.compile_strategy(source)

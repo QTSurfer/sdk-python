@@ -21,7 +21,12 @@ from qtsurfer.api.client._generated.api.auth.authenticate import (
 )
 from qtsurfer.api.client._generated.models import AuthTokenError, AuthTokenResponse
 from qtsurfer.api.client._generated.types import Response
-from qtsurfer.api.client.models import InstrumentCatalogueResponse
+from qtsurfer.api.client.models import (
+    EquityCurveOutMode,
+    GetLiveRunPaperEquityMeasure,
+    InstrumentCatalogueResponse,
+    LivePaperEquityCurve,
+)
 
 from qtsurfer_sdk._errors import QTSAuthError
 from qtsurfer_sdk._tokens import InMemoryTokenStore, TokenStore
@@ -224,17 +229,34 @@ class AuthenticatedSession:
         run_id: str,
         *,
         currency: str | None = None,
+        instrument: str | None = None,
+        measure: GetLiveRunPaperEquityMeasure | None = None,
         since_ms: int | None = None,
+        out_mode: EquityCurveOutMode | None = None,
+        resample: int | None = None,
+        differential: bool | None = None,
         cursor: str | None = None,
         limit: int | None = None,
-    ):
+    ) -> LivePaperEquityCurve | None:
         from qtsurfer_sdk import _workflows as wf
 
         return wf.get_live_run_paper_equity(
-            self, run_id, currency=currency, since_ms=since_ms, cursor=cursor, limit=limit
+            self,
+            run_id,
+            currency=currency,
+            instrument=instrument,
+            measure=measure,
+            since_ms=since_ms,
+            out_mode=out_mode,
+            resample=resample,
+            differential=differential,
+            cursor=cursor,
+            limit=limit,
         )
 
-    def get_next_live_run_paper_equity(self, run_id: str, page):
+    def get_next_live_run_paper_equity(
+        self, run_id: str, page: LivePaperEquityCurve
+    ) -> LivePaperEquityCurve | None:
         from qtsurfer_sdk import _workflows as wf
 
         return wf.get_next_live_run_paper_equity(self, run_id, page)

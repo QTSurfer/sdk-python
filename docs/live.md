@@ -89,13 +89,16 @@ available through the REST API client either.
 ### Simulate paper fills
 
 Paper trading is opt-in. Add a `LivePaperConfig` to the start request to simulate balances,
-positions, fees, and equity without submitting exchange orders. Each quote currency gets a separate
-account. The defaults are 100 units of initial funding, a 0.001 fee rate, and separate paper output.
+positions, fees, and equity without submitting exchange orders. By default, each quote currency
+gets a separate account; set `accounts=LivePaperConfigAccounts.INSTRUMENT` for one independent
+account per instrument. The defaults are 100 units of initial funding, a 0.001 fee rate, and
+separate paper output.
 Set `output=MIX` only when paper events also need to appear in retained signals; that still requires
 signal relay and uses account storage.
 
 ```python
-from qtsurfer.api.client.models import LivePaperConfig, LivePaperConfigOutput
+from qtsurfer.api.client.models import LivePaperConfig, LivePaperConfigAccounts, LivePaperConfigOutput
+from qtsurfer_sdk import EquityCurveOutMode, GetLiveRunPaperEquityMeasure
 
 run = session.start_live(
     strategy_id,
@@ -107,6 +110,7 @@ run = session.start_live(
             fee_rate=0.001,
             percent_amount_to_lock=20,
             output=LivePaperConfigOutput.MIX,
+            accounts=LivePaperConfigAccounts.INSTRUMENT,
         ),
     ),
 )
@@ -116,17 +120,28 @@ for account in paper.accounts:
 ```
 
 Without a `paper` block, paper reads raise `QTSError` with status `404`.
-`get_live_run_paper(run_id)` reads the current
-snapshot. `get_live_run_paper_equity(run_id, currency=None, since_ms=None, cursor=None, limit=None)`
-reads oldest-first history; omit `currency` to combine quote accounts. Cursor takes precedence over
-`since_ms`; `get_next_live_run_paper_equity(run_id, page)` follows the server link while preserving
-currency, time, and page size.
+`get_live_run_paper(run_id)` reads the current snapshot, including per-instrument realised PnL,
+position marks, and account/instrument unrealised and total PnL where available. Positions opened
+or changed since the last mark do not have mark values yet.
+
+`get_live_run_paper_equity(run_id, currency=None, instrument=None, measure=None, since_ms=None,
+out_mode=None, resample=None, differential=None, cursor=None, limit=None)` returns one equity-curve
+response with `meta` and `gaps`. Select a currency account with `currency`, or an instrument account
+with `instrument`. For an instrument's curve, `measure` can be `REALISEDPNL` or `TOTALPNL`; account
+curves use equity. `get_next_live_run_paper_equity(run_id, curve)` follows the server link while
+preserving account selection, measure, transform, time, and page-size filters.
 
 ```python
 equity = session.get_live_run_paper_equity(
-    run.run_id, currency="USDT", since_ms=started_at_ms, limit=100
+    run.run_id,
+    currency="USDT",
+    instrument="ETH/USDT",
+    measure=GetLiveRunPaperEquityMeasure.TOTALPNL,
+    since_ms=started_at_ms,
+    out_mode=EquityCurveOutMode.SHORT,
+    limit=100,
 )
-next_equity = session.get_next_live_run_paper_equity(run.run_id, equity)
+next_curve = session.get_next_live_run_paper_equity(run.run_id, equity)
 ```
 
 ## List owned runs

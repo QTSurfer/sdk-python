@@ -28,14 +28,17 @@ from qtsurfer.api.client._generated.models import (
     DatasetCreated,
     DatasetUploadSession,
     DataSourceType,
+    EquityCurveOutMode,
     ErrorNextCall,
     ExecuteBacktestBody,
     ExecuteSweepRequest,
+    GetLiveRunPaperEquityMeasure,
     InstrumentListResponse,
+    InsufficientScopeError,
     LiveCommandResult,
     LiveListResponse,
     LivePaper,
-    LivePaperEquityPage,
+    LivePaperEquityCurve,
     LiveRun,
     LiveSignalPage,
     PoolListResponse,
@@ -58,6 +61,7 @@ from qtsurfer.api.client._generated.types import UNSET, Response
 from qtsurfer_sdk._errors import (
     QTSCompileError,
     QTSError,
+    QTSInsufficientScopeError,
     QTSLiveSignalCursorExpiredError,
     QTSUploadError,
 )
@@ -79,12 +83,21 @@ def _parsed_call(
         message = getattr(error, "message", None) or f"HTTP {response.status_code}"
         reason = getattr(error, "reason", None)
         next_call = getattr(error, "next_", None)
+        required = getattr(error, "required", None)
+        retryable = getattr(error, "retryable", None)
+        if isinstance(required, str):
+            raise QTSInsufficientScopeError(
+                message,
+                required=required,
+                status=response.status_code,
+            )
         raise QTSError(
             message,
             status=response.status_code,
             reason=reason if isinstance(reason, str) else None,
             next_call=next_call if isinstance(next_call, ErrorNextCall) else None,
             retry_after=response.headers.get("Retry-After"),
+            retryable=retryable if isinstance(retryable, bool) else None,
         )
     return cast(T | None, response.parsed)
 
@@ -121,22 +134,32 @@ def get_live_run_paper_equity(
     run_id: str,
     *,
     currency: str | None = None,
+    instrument: str | None = None,
+    measure: GetLiveRunPaperEquityMeasure | None = None,
     since_ms: int | None = None,
+    out_mode: EquityCurveOutMode | None = None,
+    resample: int | None = None,
+    differential: bool | None = None,
     cursor: str | None = None,
     limit: int | None = None,
-) -> LivePaperEquityPage | None:
+) -> LivePaperEquityCurve | None:
     """Read one oldest-first page of simulated paper equity history."""
     from qtsurfer.api.client._generated.api.live_execution import get_live_run_paper_equity
 
     return cast(
-        LivePaperEquityPage | None,
+        LivePaperEquityCurve | None,
         _parsed_call(
             session,
             lambda c: get_live_run_paper_equity.sync_detailed(
                 run_id,
                 client=c,
                 currency=currency if currency is not None else UNSET,
+                instrument=instrument if instrument is not None else UNSET,
+                measure=measure if measure is not None else UNSET,
                 since_ms=since_ms if since_ms is not None else UNSET,
+                out_mode=out_mode if out_mode is not None else UNSET,
+                resample=resample if resample is not None else UNSET,
+                differential=differential if differential is not None else UNSET,
                 cursor=cursor if cursor is not None else UNSET,
                 limit=limit if limit is not None else UNSET,
             ),
@@ -145,8 +168,8 @@ def get_live_run_paper_equity(
 
 
 def get_next_live_run_paper_equity(
-    session: AuthenticatedSession, run_id: str, page: LivePaperEquityPage
-) -> LivePaperEquityPage | None:
+    session: AuthenticatedSession, run_id: str, page: LivePaperEquityCurve
+) -> LivePaperEquityCurve | None:
     """Follow a paper-equity page's next link while retaining its query filters."""
     links = page.field_links
     next_link = getattr(links, "next_", None)
@@ -158,12 +181,21 @@ def get_next_live_run_paper_equity(
     if not cursor:
         raise ValueError("Paper equity continuation link has no cursor")
     since_ms = query.get("sinceMs", [None])[0]
+    measure = query.get("measure", [None])[0]
+    out_mode = query.get("outMode", [None])[0]
+    resample = query.get("resample", [None])[0]
+    differential = query.get("differential", [None])[0]
     limit = query.get("limit", [None])[0]
     return get_live_run_paper_equity(
         session,
         run_id,
         currency=query.get("currency", [None])[0],
-        since_ms=int(since_ms) if since_ms else None,
+        instrument=query.get("instrument", [None])[0],
+        measure=GetLiveRunPaperEquityMeasure(measure) if measure else None,
+        since_ms=int(since_ms) if since_ms is not None else None,
+        out_mode=EquityCurveOutMode(out_mode) if out_mode else None,
+        resample=int(resample) if resample else None,
+        differential=differential.lower() == "true" if differential else None,
         cursor=cursor,
         limit=int(limit) if limit else None,
     )
@@ -325,7 +357,15 @@ def get_live_signals(
     if not 200 <= response.status_code < 300:
         error = response.parsed
         message = getattr(error, "message", None) or f"HTTP {response.status_code}"
-        raise QTSError(message, status=response.status_code)
+        required = getattr(error, "required", None)
+        retryable = getattr(error, "retryable", None)
+        if isinstance(required, str):
+            raise QTSInsufficientScopeError(message, required=required, status=response.status_code)
+        raise QTSError(
+            message,
+            status=response.status_code,
+            retryable=retryable if isinstance(retryable, bool) else None,
+        )
     return cast(LiveSignalPage | None, response.parsed)
 
 
@@ -403,6 +443,13 @@ def compile_strategy(session: AuthenticatedSession, source: str):
         )
     )
     if resp.status_code != 200:
+        if resp.status_code == 403:
+            try:
+                error = InsufficientScopeError.from_dict(resp.json())
+            except (KeyError, TypeError, ValueError):
+                pass
+            else:
+                raise QTSInsufficientScopeError(error.message, required=error.required)
         raise QTSCompileError(
             f"compile failed: HTTP {resp.status_code}: {resp.text[:300]}",
             status=resp.status_code,
