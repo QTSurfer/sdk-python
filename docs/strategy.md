@@ -47,5 +47,5 @@ session.delete_strategy(compiled.strategy_id)
 A passed bounded validation is not a trading-performance or safety guarantee.
 
 For indicators, `emitBuy`/`emitSell`, information signals, order configuration, and chart metadata,
-see the API's [Coding Java strategies](https://qtsurfer.github.io/docs/strategy_coding.html) guide
+see the API's [Coding Java strategies](https://www.qtsurfer.com/docs/developers/api/strategy_coding) guide
 and the [`qtsurfer-java-strategy`](https://github.com/QTSurfer/strategy-skills) skill.
