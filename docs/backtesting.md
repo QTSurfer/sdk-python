@@ -82,7 +82,7 @@ result = session.get_sweep_result(
 
 `get_sweep_sensitivity(...)` aggregates parameter marginals and heatmaps. `get_sweep_run_equity_curve`
 reads one curve only if retained; unretained trials return `404`. `cancel_sweep(...)` requests stop.
-The shared API [equity-curve guide](https://qtsurfer.github.io/docs/equity_curves.html) defines
+The shared API [equity-curve guide](https://www.qtsurfer.com/docs/developers/api/equity_curves) defines
 transforms and metadata.
 
 Walk-forward changes the operation into per-fold optimize-then-score validation. Its rows represent
