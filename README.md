@@ -145,6 +145,12 @@ while True:
     break
 ```
 
+The `PrepareAccepted` response includes the effective cadence. For managed exchanges, the plan
+sets the available cadences and the default used when `cadence` is omitted; a disallowed cadence
+raises `QTSError` with `status == 402`, `retryable == False`, and an optional `upgrade_url`. See the
+[backtesting guide](https://github.com/QTSurfer/sdk-python/blob/main/docs/backtesting.md) for the
+dataset cadence rules and full workflow.
+
 ### Sweep
 
 ```python

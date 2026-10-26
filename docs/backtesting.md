@@ -14,7 +14,10 @@ requires `exchange_id`, `from_`, and `to`; set either `instrument` or `dataset_i
 
 Managed `ticker`, `funding`, and `kline` preparations accept the same fifteen labels:
 `1s`, `5s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`, `1d`,
-`1w`, `1q`; omitted means `1s`. Kline cadence selects bar width once at preparation.
+`1w`, `1q`. The account plan determines which cadences are available and its default; omission
+uses that default. A cadence outside the plan returns `402` (`PlanRequiredError`, non-retryable)
+with an optional upgrade URL. `prepare()` returns `PrepareAccepted`, whose `cadence` is the value
+actually selected. Kline cadence selects bar width once at preparation.
 Dataset preparation defaults to its version's cadence and accepts an exact multiple
 of that cadence; `rt` data can be resampled to any fixed cadence.
 For `exchange_id="user"`, `type_="kline"` requires the selected ready dataset version to have

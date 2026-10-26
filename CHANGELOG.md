@@ -2,6 +2,14 @@
 
 All notable changes to `qtsurfer-sdk` are documented here.
 
+## [0.8.0] — 2026-10-26
+
+### Changed 🔄
+
+- Target OpenAPI `0.128.49` through `qtsurfer-api-client==0.128.49`.
+- Document plan-specific managed-data cadences and the effective cadence returned by preparation.
+- Document cadence-based `402` refusals and the plan-dependent candle/per-trade defaults for DEX imports.
+
 ## [0.7.0] — 2026-10-26
 
 ### Added ✨

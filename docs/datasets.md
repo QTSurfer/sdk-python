@@ -114,7 +114,7 @@ request = DatasetImportRequest(
 response = session.call(lambda client: import_dataset.sync_detailed(client=client, body=request))
 if response.status_code != 202 or not isinstance(response.parsed, DatasetImportCreated):
     raise RuntimeError(f"Import refused: {response.status_code} {response.parsed}")
-created = response.parsed  # initial datasetId/importId/jobId only; not a ready version
+created = response.parsed  # datasetId/importId/jobId and the effective cadence when known
 deadline = time.monotonic() + 900
 while True:
     response = session.call(
@@ -136,13 +136,19 @@ while True:
     time.sleep(3)
 ```
 
-`cadence` defaults to the finest cadence every part of a CEX range holds. To choose one,
-pass `DatasetImportRequestCadence(...)`: `1s`, `5s`, `1m`, `3m`, `5m`, `15m`, `30m`,
-`1h`, `2h`, `4h`, `8h`, `12h`, `1d`, `1w`, `1q` for both ticker and kline imports.
-A finer cadence than the range holds, or an inexact multiple, fails asynchronously;
-`state.error` names the finest available cadence. A mixed-history range is uniformly
-coarsened when cadence is omitted. DEX accepts only `1s`, `1m`, `5m`, or omission for
-native per-trade history; unsupported source/cadence combinations can fail asynchronously.
+The account plan determines which cadences a managed import can use and its default. Omitted
+`cadence` uses that default; a cadence outside the plan returns `402` as `PlanRequiredError`, with
+`retryable=False` and an optional `upgrade_url`. To choose one, pass
+`DatasetImportRequestCadence(...)`: `1s`, `5s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`,
+`4h`, `8h`, `12h`, `1d`, `1w`, `1q` for CEX ticker or kline imports. A finer cadence than the
+range holds, or an inexact multiple, fails asynchronously; `state.error` names the finest available
+cadence. A mixed-history range is uniformly coarsened when cadence is omitted.
+
+DEX imports produce candles at the requested cadence, or at the plan default when omitted. The
+exception is a plan that includes the source's native rate: omitting `cadence` then keeps per-trade
+history and requires `id` and `version` in `DatasetImportDexRequest`. Unsupported source/cadence
+combinations can fail asynchronously. Uploads and prepares against `exchange_id="user"` are not
+limited by plan cadences.
 
 Read `session.get_account().max_import_range_hours` before choosing a range. Imports count
 against dataset-count, per-dataset byte, total-storage and execution-time limits; `403`

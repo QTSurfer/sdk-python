@@ -1,6 +1,6 @@
 # API coverage
 
-This update targets API spec **0.128.48** through `qtsurfer-api-client==0.128.48`.
+This update targets API spec **0.128.49** through `qtsurfer-api-client==0.128.49`.
 Every OpenAPI operation is accounted for below. Endpoint-only entries
 are deliberate choices, called with `session.call(...)`.
 
@@ -9,9 +9,9 @@ are deliberate choices, called with `session.call(...)`.
 | Authentication | `auth`, refresh-on-401, `TokenStore` | `auth()` owns API-key exchange and retries one `401`. |
 | Exchange | `list_exchanges`, `list_instruments` | `download_tickers` and `download_klines` use the API client's public binary adapters. |
 | Strategy | `compile_strategy`, `validate_strategy`, `get_strategy`, `list_strategies(include_deleted)`, `get_strategy_code`, `delete_strategy` | `compile_strategy` adapts `text/plain`, unsupported by the generator, and returns plan `requires`; `402` refusals expose an optional upgrade URL. Deleted entries carry `deleted_at`. |
-| Backtesting | `prepare`, `get_prepare_status`, `execute`, `get_backtest_result`, `cancel_backtest` | Explicit stages preserve durable job ids for application-owned polling. |
+| Backtesting | `prepare`, `get_prepare_status`, `execute`, `get_backtest_result`, `cancel_backtest` | Explicit stages preserve durable job ids for application-owned polling. `prepare` returns the effective plan cadence; plan cadence refusals are typed non-retryable `402` errors. |
 | Sweeps | `sweep`, `get_sweep_result`, `get_sweep_sensitivity`, `get_sweep_run_equity_curve`, `cancel_sweep` | The caller owns pagination and polling policy. |
-| Dataset | `create_dataset`, `list_datasets(include_deleted)`, `get_dataset`, `delete_dataset`, `open_dataset_upload`, `upload_dataset_file`, `finalize_dataset_upload`, `get_dataset_upload` | `import_dataset` and `get_dataset_import` remain generated-client operations. Deleted entries carry `deleted_at`; presigned upload bytes never carry the API token. |
+| Dataset | `create_dataset`, `list_datasets(include_deleted)`, `get_dataset`, `delete_dataset`, `open_dataset_upload`, `upload_dataset_file`, `finalize_dataset_upload`, `get_dataset_upload` | `import_dataset` and `get_dataset_import` remain generated-client operations. Managed imports use plan cadence defaults; DEX per-trade history is retained when included in plan. Deleted entries carry `deleted_at`; presigned upload bytes never carry the API token. |
 | Account | `get_account`, `get_account_usage` | `max_sweep_cartesian` reports the account's Cartesian sweep cap; check shared storage before retaining signals. |
 | Live Execution | `start_live`, `get_live`, `stop_live`, `list_live`, `list_public_live`, `update_live`, `update_live_params`, `send_live_command`, `get_live_signals`, `get_next_live_signals`, `get_live_run_paper`, `get_live_run_paper_equity`, `get_next_live_run_paper_equity` | `sandbox_minutes` controls the plan-aware minimum trial length and is present on start/current-run responses. Paper simulation is opt-in; accounts can be per currency or per instrument. Paper equity exposes the shared curve contract and continuation preserves filters. `mint_live_connection_token` remains generated-client only because the SDK has no managed WebSocket client. |
 

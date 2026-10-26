@@ -422,7 +422,7 @@ def test_prepare_passes_dataset_version_id(token, httpx_mock: HTTPXMock):
         url=f"{BASE}/backtest/user/ticker/prepare",
         method="POST",
         status_code=202,
-        json={"jobId": "prepare-1"},
+        json={"jobId": "prepare-1", "cadence": "1m"},
     )
 
     accepted = wf.prepare(
@@ -436,6 +436,7 @@ def test_prepare_passes_dataset_version_id(token, httpx_mock: HTTPXMock):
 
     assert accepted is not None
     assert accepted.job_id == "prepare-1"
+    assert accepted.cadence == "1m"
     request = httpx_mock.get_request(url=f"{BASE}/backtest/user/ticker/prepare", method="POST")
     assert request is not None
     payload = json.loads(request.read())
