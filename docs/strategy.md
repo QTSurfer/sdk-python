@@ -16,6 +16,22 @@ compiled = session.compile_strategy(source)
 print(compiled.strategy_id)
 ```
 
+The typed compile result also exposes `requires`, the plan capabilities needed by the compiled
+source. The current value `CompileStrategyResponse200RequiresItem.INDICATORS_PRO` means that the
+strategy uses Pro indicators. Registration succeeds on every plan, but validation, backtests,
+sweeps, and live starts return HTTP `402` when the plan lacks a required capability. The SDK raises
+`QTSError` with `status == 402`, `retryable == False`, and the optional `upgrade_url`; change the plan
+before retrying. `get_strategy()` does not return this compile-only field.
+
+```python
+from qtsurfer.api.client.models import CompileStrategyResponse200RequiresItem
+from qtsurfer.api.client.types import UNSET
+
+compiled = session.compile_strategy(source)
+if compiled.requires is not UNSET and CompileStrategyResponse200RequiresItem.INDICATORS_PRO in compiled.requires:
+    print("This strategy needs a plan with Pro indicators")
+```
+
 ## Validate and inspect
 
 `validate_strategy(strategy_id)` is idempotent; a response that did not queue work is not itself a

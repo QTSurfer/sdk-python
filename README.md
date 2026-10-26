@@ -78,6 +78,7 @@ src = """public class EmaCross extends AbstractTickerStrategy { ... }"""
 
 comp = session.compile_strategy(src)  # CompileStrategyResponse200
 sid = comp.strategy_id
+print(comp.requires)  # e.g. [CompileStrategyResponse200RequiresItem.INDICATORS_PRO]
 
 session.validate_strategy(sid)  # 202/pending or already-recorded verdict
 state = session.get_strategy(sid)  # validation, notices, requiredSources
@@ -268,7 +269,7 @@ session = auth(store=FileStore(Path.home() / ".qtsurfer" / "token.json"))
 from qtsurfer_sdk import QTSError, QTSAuthError, QTSPreparationError, QTSExecutionError
 ```
 
-* `QTSError` — base for all SDK errors (carries optional `.status` and `.retryable`).
+* `QTSError` — base for all SDK errors (carries optional `.status`, `.retryable`, and `.upgrade_url`).
   Workflow methods raise it for non-2xx HTTP responses; `.status` contains the HTTP status and
   the exception message uses the server-provided error message when available.
   `.reason`, `.next_call` (`ErrorNextCall`), `.retry_after`, and `.retryable` preserve structured

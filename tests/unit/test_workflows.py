@@ -90,7 +90,7 @@ def test_live_list_methods_use_distinct_endpoints_and_return_typed_pages(token, 
     ]
 
 
-def test_start_live_passes_sandbox_override(token, httpx_mock):
+def test_start_live_passes_sandbox_override_and_duration(token, httpx_mock):
     httpx_mock.add_response(
         url=f"{BASE}/strategy/strategy-1/live",
         method="POST",
@@ -107,17 +107,28 @@ def test_start_live_passes_sandbox_override(token, httpx_mock):
             "paramsVersion": 0,
             "relay": False,
             "startedAtMs": 1_728_000_000_000,
+            "sandboxMinutes": 60,
         },
     )
 
     from qtsurfer.api.client.models import StartLiveRequest
 
-    run = token.start_live("strategy-1", StartLiveRequest(sources=[], sandbox=True))
+    run = token.start_live(
+        "strategy-1", StartLiveRequest(sources=[], sandbox=True, sandbox_minutes=60)
+    )
 
     assert run.run_id == "run-1"
+    assert run.sandbox_minutes == 60
     request = httpx_mock.get_request(url=f"{BASE}/strategy/strategy-1/live", method="POST")
     assert request is not None
-    assert json.loads(request.read())["sandbox"] is True
+    assert json.loads(request.read()) == {
+        "sources": [],
+        "sandbox": True,
+        "sandboxMinutes": 60,
+        "relay": False,
+        "stream": False,
+        "visibility": "private",
+    }
 
 
 @pytest.mark.parametrize(
@@ -184,6 +195,27 @@ def test_workflow_error_preserves_retryable_flag(token, httpx_mock):
 
     assert exc_info.value.retryable is True
     assert exc_info.value.retry_after == "5"
+
+
+def test_plan_required_error_preserves_optional_upgrade_url(token, httpx_mock):
+    httpx_mock.add_response(
+        url=f"{BASE}/strategy/strategy-1/validate",
+        method="POST",
+        status_code=402,
+        json={
+            "code": 402,
+            "message": "The strategy requires Pro indicators.",
+            "retryable": False,
+            "upgradeUrl": "https://www.qtsurfer.com/pricing",
+        },
+    )
+
+    with pytest.raises(QTSError, match="requires Pro indicators") as exc_info:
+        token.validate_strategy("strategy-1")
+
+    assert exc_info.value.status == 402
+    assert exc_info.value.retryable is False
+    assert exc_info.value.upgrade_url == "https://www.qtsurfer.com/pricing"
 
 
 def test_live_paper_equity_command_and_deleted_catalogues(token, httpx_mock):
@@ -353,12 +385,13 @@ def test_compile_strategy_refreshes_and_returns_typed_model(token, httpx_mock: H
     httpx_mock.add_response(
         url=f"{BASE}/strategy",
         method="POST",
-        json={"strategyId": "strategy-1", "declaredProperties": []},
+        json={"strategyId": "strategy-1", "declaredProperties": [], "requires": ["indicators.pro"]},
     )
 
     compiled = wf.compile_strategy(token, "public class Strategy {}")
 
     assert compiled.strategy_id == "strategy-1"
+    assert [requirement.value for requirement in compiled.requires] == ["indicators.pro"]
     requests = [
         request for request in httpx_mock.get_requests() if request.url.path == "/v1/strategy"
     ]

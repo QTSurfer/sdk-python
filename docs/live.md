@@ -28,11 +28,19 @@ source = LiveSourceRequest(
 )
 run = session.start_live(
     strategy_id,
-    StartLiveRequest(sources=[source], name="ETH breakout", relay=True),
+    StartLiveRequest(sources=[source], name="ETH breakout", relay=True, sandbox_minutes=120),
 )
+print(run.sandbox_minutes)  # 120
 current = session.get_live(strategy_id)
 stopping = session.stop_live(strategy_id)
 ```
+
+`sandbox_minutes` asks for a minimum sandbox duration from 5 to 1,440 minutes. If omitted, the
+plan's shortest trial applies. A request below that plan minimum returns `429`; an invalid
+non-integer or out-of-range value returns `400`. The trial can continue beyond its minimum until it
+has enough market-feed updates to be judged, up to 24 hours. The effective duration is present on
+`start_live()` and `get_live()` responses, and on `get_live_run()` when read through the generated
+client; it is absent from runs that have no sandbox trial.
 
 `relay` defaults to `false`. Enable it only when a consumer needs live or retained signals, because
 retained signals consume shared account storage.

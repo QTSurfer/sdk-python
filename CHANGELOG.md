@@ -2,6 +2,49 @@
 
 All notable changes to `qtsurfer-sdk` are documented here.
 
+## [0.7.0] — 2026-10-26
+
+### Added ✨
+
+- `compile_strategy()` returns the compiled source's plan requirements, such as
+  `CompileStrategyResponse200RequiresItem.INDICATORS_PRO`. Plan refusals raise `QTSError` with
+  `status == 402`, `retryable == False`, and an optional `upgrade_url`.
+- `start_live()` accepts `StartLiveRequest.sandbox_minutes` and returns the stream-aware
+  `LiveRunWithStream` model with the granted duration.
+
+### Changed 🔄
+
+- Target OpenAPI `0.128.48` through `qtsurfer-api-client==0.128.48`; the strategy and live guides
+  explain capability checks, trial defaults, limits, and retry behavior.
+
+```python
+from pathlib import Path
+
+from qtsurfer.api.client.models import (
+    LiveSourceRequest,
+    LiveSourceRequestType,
+    LiveSourceRequestVenueType,
+    StartLiveRequest,
+)
+from qtsurfer_sdk import auth
+
+session = auth()  # reads QTSURFER_APIKEY
+compiled = session.compile_strategy(Path("MyStrategy.java").read_text())
+print(compiled.requires)
+source = LiveSourceRequest(
+    venue_type=LiveSourceRequestVenueType.CEX,
+    exchange="binance",
+    segment="spot",
+    type_=LiveSourceRequestType.TICKER,
+    instruments=["BTC/USDT"],
+)
+run = session.start_live(
+    compiled.strategy_id,
+    StartLiveRequest(sources=[source], sandbox_minutes=120),
+)
+print(run.sandbox_minutes)
+```
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.6.0] — 2026-10-23

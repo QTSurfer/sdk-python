@@ -34,6 +34,7 @@ class QTSError(Exception):
         next_call: ErrorNextCall | None = None,
         retry_after: str | None = None,
         retryable: bool | None = None,
+        upgrade_url: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
@@ -41,6 +42,7 @@ class QTSError(Exception):
         self.next_call = next_call
         self.retry_after = retry_after
         self.retryable = retryable
+        self.upgrade_url = upgrade_url
         if cause is not None:
             self.__cause__ = cause
 

@@ -40,6 +40,7 @@ from qtsurfer.api.client._generated.models import (
     LivePaper,
     LivePaperEquityCurve,
     LiveRun,
+    LiveRunWithStream,
     LiveSignalPage,
     PoolListResponse,
     PrepareRequest,
@@ -85,6 +86,7 @@ def _parsed_call(
         next_call = getattr(error, "next_", None)
         required = getattr(error, "required", None)
         retryable = getattr(error, "retryable", None)
+        upgrade_url = getattr(error, "upgrade_url", None)
         if isinstance(required, str):
             raise QTSInsufficientScopeError(
                 message,
@@ -98,6 +100,7 @@ def _parsed_call(
             next_call=next_call if isinstance(next_call, ErrorNextCall) else None,
             retry_after=response.headers.get("Retry-After"),
             retryable=retryable if isinstance(retryable, bool) else None,
+            upgrade_url=upgrade_url if isinstance(upgrade_url, str) else None,
         )
     return cast(T | None, response.parsed)
 
@@ -227,23 +230,23 @@ def send_live_command(
 
 def start_live(
     session: AuthenticatedSession, strategy_id: str, request: StartLiveRequest
-) -> LiveRun | None:
-    """Start a live run using the generated request model, including its sandbox override."""
+) -> LiveRunWithStream | None:
+    """Start a live run and return its stream-aware response, including sandbox duration."""
     from qtsurfer.api.client._generated.api.live_execution import start_live
 
     return cast(
-        LiveRun | None,
+        LiveRunWithStream | None,
         _parsed_call(
             session, lambda c: start_live.sync_detailed(strategy_id, client=c, body=request)
         ),
     )
 
 
-def get_live(session: AuthenticatedSession, strategy_id: str) -> LiveRun | None:
+def get_live(session: AuthenticatedSession, strategy_id: str) -> LiveRunWithStream | None:
     from qtsurfer.api.client._generated.api.live_execution import get_live
 
     return cast(
-        LiveRun | None,
+        LiveRunWithStream | None,
         _parsed_call(session, lambda c: get_live.sync_detailed(strategy_id, client=c)),
     )
 
