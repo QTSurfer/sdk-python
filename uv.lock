@@ -725,21 +725,21 @@ wheels = [
 
 [[package]]
 name = "qtsurfer-api-client"
-version = "0.128.49"
+version = "0.128.50"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "httpx" },
     { name = "python-dateutil" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/a6/cfb52375e4f1750f4a140e342df2e431406289215c908b79515a0dc6fdf2/qtsurfer_api_client-0.128.49.tar.gz", hash = "sha256:2d736485b207b0b5e74ab20b481a947b1653ca53fe8dc371b4d7a9a119c5b808", size = 169564, upload-time = "2026-10-26T20:50:15.762Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/b2/e5c800e761cfbfec7464593459fb6329afec9bc537adeb7eac089516f3ae/qtsurfer_api_client-0.128.50.tar.gz", hash = "sha256:e202f9dd5dc3d3de4f57ab1153568db1ce8e816e6772b54ba539a596aad1f150", size = 170161, upload-time = "2026-10-29T14:05:47.309Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ac/ef/428048c9fd450c341d3555963efa56cacb91fdcfa091eb615ff57bd14ed6/qtsurfer_api_client-0.128.49-py3-none-any.whl", hash = "sha256:10f1c2a8243f93734d939bfd60a4b579610318c03a84a9f0ec8ca7328fb095b8", size = 359567, upload-time = "2026-10-26T20:50:13.921Z" },
+    { url = "https://files.pythonhosted.org/packages/75/c2/fd7d3a6082d6d3c6db10db01624ad3ec74bf8e6bb2073120be7285895587/qtsurfer_api_client-0.128.50-py3-none-any.whl", hash = "sha256:a3814785c83adf13fc515852643fc1aa908ccc925671ceff5b902c24c5aaac59", size = 360123, upload-time = "2026-10-29T14:05:45.656Z" },
 ]
 
 [[package]]
 name = "qtsurfer-sdk"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -759,7 +759,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.23,<1" },
-    { name = "qtsurfer-api-client", specifier = "==0.128.49" },
+    { name = "qtsurfer-api-client", specifier = "==0.128.50" },
 ]
 
 [package.metadata.requires-dev]

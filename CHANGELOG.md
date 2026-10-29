@@ -2,6 +2,17 @@
 
 All notable changes to `qtsurfer-sdk` are documented here.
 
+## [0.9.0] — 2026-10-29
+
+### Added ✨
+
+- Document candle-only Solana DEX imports with the generated client, including the plan-default cadence,
+  case-sensitive base58 pool address, 180-day history limit, and sparse candle bars.
+
+### Changed 🔄
+
+- Pin `qtsurfer-api-client==0.128.50` for OpenAPI `0.128.50`.
+
 ## [0.8.0] — 2026-10-26
 
 ### Changed 🔄

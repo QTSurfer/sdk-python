@@ -150,6 +150,34 @@ history and requires `id` and `version` in `DatasetImportDexRequest`. Unsupporte
 combinations can fail asynchronously. Uploads and prepares against `exchange_id="user"` are not
 limited by plan cadences.
 
+Solana DEX imports are candle-only. Even Elite uses its plan default (`1s`) when cadence is omitted;
+`id`, `version`, and `factory` are never needed. The pool address is base58 and case-sensitive.
+Candle imports whose `from_` is earlier than 180 days before the request return `400` immediately on
+every network; per-trade DEX imports and CEX imports are not subject to that history limit. DEX
+candles may be sparse: an interval with no trades can have no bar.
+
+```python
+from qtsurfer.api.client.models import (
+    DatasetImportDexRequest,
+    DatasetImportDexRequestNetwork,
+    DatasetImportRequestCadence,
+)
+
+solana_request = DatasetImportRequest(
+    name="SOL history",
+    instrument="SOL/USDC",
+    from_=datetime(2026, 10, 27, tzinfo=UTC),
+    to=datetime(2026, 10, 27, 6, tzinfo=UTC),
+    type_=DatasetImportRequestType.DEX,
+    cadence=DatasetImportRequestCadence.VALUE_4,
+    dex=DatasetImportDexRequest(
+        network=DatasetImportDexRequestNetwork.SOLANA,
+        contract="Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
+    ),
+)
+response = session.call(lambda client: import_dataset.sync_detailed(client=client, body=solana_request))
+```
+
 Read `session.get_account().max_import_range_hours` before choosing a range. Imports count
 against dataset-count, per-dataset byte, total-storage and execution-time limits; `403`
 reports tier/quota restrictions, `400` malformed inputs, and failed states include no data,
