@@ -2,6 +2,17 @@
 
 All notable changes to `qtsurfer-sdk` are documented here.
 
+## [0.10.0] — 2026-11-04
+
+### Changed 🔄
+
+- Target OpenAPI `0.128.54` through `qtsurfer-api-client==0.128.54`.
+- Document recovery from incompatible compiled strategies (`409`) for backtests, sweeps, and live starts.
+  The SDK raises `QTSError` with the HTTP status and server message.
+- Retry dataset uploads once with the first DNS label changed from `storage` to `storage2` when the
+  presigned primary host connection fails; HTTP error responses are returned as upload errors without
+  host failover.
+
 ## [0.9.0] — 2026-10-29
 
 ### Added ✨

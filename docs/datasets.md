@@ -54,7 +54,10 @@ backtest accepts either type. Before the first version is ready, the type is onl
 The upload helper accepts either a `pathlib.Path` or an open binary file. It closes files it opens,
 but leaves caller-owned file handles open. Upload/network failures raise `QTSUploadError`; the SDK
 does not include the presigned URL in the error because it grants temporary write access. A
-successful upload does not start ingestion: always finalize the session.
+connection failure retries the same signed URL once with its first DNS label changed from `storage`
+to `storage2`; the suffix, path, and signature query remain unchanged. The next upload starts with
+the primary `storage` host again, and HTTP responses are not retried. A successful upload does not
+start ingestion: always finalize the session.
 
 ## Resume and create later versions
 
@@ -75,6 +78,7 @@ Run against a ready version with `exchange_id="user"`, `dataset_id`, and optiona
 
 Dataset imports from an existing platform source are available through the generated
 `qtsurfer-api-client`; this SDK currently wraps user-file upload and lifecycle operations only.
+The SDK does not currently fetch signed dataset `data_url` downloads or manage WebSocket connections.
 
 ## Import exchange history
 

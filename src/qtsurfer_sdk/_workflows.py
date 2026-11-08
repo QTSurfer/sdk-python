@@ -13,13 +13,15 @@ data without the SDK hiding the API shape.
 
 from __future__ import annotations
 
+import shutil
+import tempfile
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, BinaryIO, TypeVar, cast
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, urlsplit, urlunsplit
 
 import httpx
-from qtsurfer.api.client._generated import AuthenticatedClient
+from qtsurfer.api.client import AuthenticatedClient
 from qtsurfer.api.client._generated.models import (
     Account,
     AccountUsage,
@@ -807,8 +809,35 @@ def upload_dataset_file(
 
 def _put_dataset_upload(upload: DatasetCreated | DatasetUploadSession, source: BinaryIO) -> None:
     """Perform the credential-free presigned PUT without exposing its URL in errors."""
+    if source.seekable():
+        _put_rewindable_upload(upload.upload.url, source)
+        return
+
+    # A non-seekable stream cannot be replayed if its request body is consumed before a
+    # transport error. Spool it to memory/disk so the one allowed backup attempt is safe.
     try:
-        response = httpx.put(upload.upload.url, content=source)
+        with tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b") as buffered:
+            shutil.copyfileobj(source, buffered)
+            buffered.seek(0)
+            _put_rewindable_upload(upload.upload.url, cast(BinaryIO, buffered))
+    except OSError as exc:
+        raise QTSUploadError("dataset upload source could not be read", cause=exc) from exc
+
+
+def _put_rewindable_upload(url: str, source: BinaryIO) -> None:
+    start = source.tell()
+    try:
+        response = httpx.put(url, content=source)
+    except (httpx.ConnectError, httpx.ConnectTimeout):
+        backup_url = _storage_backup_url(url)
+        if backup_url is None:
+            raise QTSUploadError("dataset upload transport failed") from None
+        try:
+            source.seek(start)
+            response = httpx.put(backup_url, content=source)
+        except httpx.HTTPError:
+            # Presigned URLs are credentials; never include them in SDK errors.
+            raise QTSUploadError("dataset upload transport failed") from None
     except httpx.HTTPError:
         # httpx exceptions retain the request URL, which is itself a credential.
         raise QTSUploadError("dataset upload transport failed") from None
@@ -818,6 +847,19 @@ def _put_dataset_upload(upload: DatasetCreated | DatasetUploadSession, source: B
         raise QTSUploadError(
             f"dataset upload failed: HTTP {response.status_code}", status=response.status_code
         )
+
+
+def _storage_backup_url(url: str) -> str | None:
+    """Switch the first storage DNS label while preserving signed URL parts."""
+    parsed = urlsplit(url)
+    if parsed.hostname is None:
+        return None
+    primary_label, separator, suffix = parsed.hostname.partition(".")
+    if primary_label != "storage" or not separator:
+        return None
+    backup_host = f"storage2.{suffix}"
+    backup_netloc = parsed.netloc.replace(parsed.hostname, backup_host, 1)
+    return urlunsplit(parsed._replace(netloc=backup_netloc))
 
 
 def finalize_dataset_upload(session: AuthenticatedSession, *, dataset_id: str, upload_id: str):

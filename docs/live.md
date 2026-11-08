@@ -10,6 +10,9 @@ session = auth()
 
 `start_live(strategy_id, request)` starts one compiled strategy. `get_live(strategy_id)` reads its
 current run, and `stop_live(strategy_id)` requests a stop; poll state until it finishes.
+An incompatible strategy returns `409` before a run is created. Re-register the source with
+`compile_strategy()` and retry with its new strategy id. A `409` can also indicate that a run is
+already active; inspect the `QTSError` message. See [strategy compatibility](strategy.md).
 
 ```python
 from qtsurfer.api.client.models import (

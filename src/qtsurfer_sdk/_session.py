@@ -15,7 +15,7 @@ import threading
 from collections.abc import Callable
 from typing import TypeVar
 
-from qtsurfer.api.client._generated import AuthenticatedClient as _GenAuthClient
+from qtsurfer.api.client import AuthenticatedClient as _GenAuthClient
 from qtsurfer.api.client._generated.api.auth.authenticate import (
     sync_detailed as _auth_sync_detailed,
 )

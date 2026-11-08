@@ -32,6 +32,12 @@ if compiled.requires is not UNSET and CompileStrategyResponse200RequiresItem.IND
     print("This strategy needs a plan with Pro indicators")
 ```
 
+The platform can also reject a strategy compiled against an earlier platform version with HTTP
+`409` when starting it live, executing a backtest, or submitting a sweep. No run is created. The
+SDK raises `QTSError` with `status == 409` and the API message; register the same source again with
+`compile_strategy()` and retry using the returned strategy id. A live-start `409` can also mean a
+run is already active, so use the message to distinguish that case.
+
 ## Validate and inspect
 
 `validate_strategy(strategy_id)` is idempotent; a response that did not queue work is not itself a

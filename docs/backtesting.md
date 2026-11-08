@@ -45,6 +45,9 @@ type_, prepare_job_id, strategy_id, store_signals=False)` submits execution; req
 only when needed because it consumes account quota. `get_backtest_result(...)` returns a raw
 `httpx.Response`: inspect `status_code` (`202` still running, `200` terminal) before parsing JSON.
 `cancel_backtest(exchange_id, type_, job_id)` requests cancellation.
+If `execute()` raises `QTSError` with status `409`, the compiled strategy is incompatible with the
+current platform. Re-register its source with `compile_strategy()` and resubmit with the returned
+strategy id; see [strategy compatibility](strategy.md).
 
 ```python
 status = session.get_prepare_status(exchange_id="binance", type_="ticker", job_id=prepared.job_id)
@@ -88,6 +91,9 @@ result = session.get_sweep_result(
 
 `get_sweep_sensitivity(...)` aggregates parameter marginals and heatmaps. `get_sweep_run_equity_curve`
 reads one curve only if retained; unretained trials return `404`. `cancel_sweep(...)` requests stop.
+An incompatible compiled strategy is rejected with `409` before a sweep is queued; re-register
+the source and submit the new strategy id. See [strategy compatibility](strategy.md).
+
 The shared API [equity-curve guide](https://www.qtsurfer.com/docs/developers/api/equity_curves) defines
 transforms and metadata.
 

@@ -14,6 +14,11 @@ session = auth("ak_...", base_url="https://api.qtsurfer.net/v1")
 The session refreshes once after a `401` and retries that request once. A second failure surfaces to
 the caller.
 
+For requests whose host starts with the `api` DNS label, the underlying API client retries once after
+changing that label to `api2` while preserving the suffix. For example, `api.qtsurfer.net` retries
+through `api2.qtsurfer.net`. Each new request starts at the primary host; HTTP status responses and
+hosts already starting with `api2` do not trigger host failover.
+
 A deployment that requires scopes refuses an otherwise valid key with none at token exchange:
 `QTSAuthError.status == 403`, `.code == AuthTokenErrorCode.APIKEY_WITHOUT_SCOPES`
 (`apikey_without_scopes`). The exception's `.message` preserves the server's exact explanation;

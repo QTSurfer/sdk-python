@@ -575,6 +575,47 @@ def test_upload_dataset_file_hides_presigned_url_on_transport_failure(httpx_mock
     assert exc.value.__cause__ is None
 
 
+@pytest.mark.parametrize("suffix", ["qtsurfer.net", "qtsurfer.com"])
+def test_upload_dataset_file_retries_storage_backup_after_connection_failure(
+    httpx_mock: HTTPXMock, suffix: str
+):
+    from qtsurfer.api.client._generated.models import DatasetUploadSession, DatasetUploadTarget
+
+    primary = f"https://storage.{suffix}/uploads/upload-2/raw.csv?X-Amz-Signature=secret"
+    backup = f"https://storage2.{suffix}/uploads/upload-2/raw.csv?X-Amz-Signature=secret"
+    httpx_mock.add_exception(httpx.ConnectError("storage unavailable"), url=primary, method="PUT")
+    httpx_mock.add_response(url=backup, method="PUT", status_code=200)
+    upload = DatasetUploadSession(
+        upload_id="upload-2",
+        upload=DatasetUploadTarget(url=primary, expires_in_minutes=15),
+    )
+
+    wf.upload_dataset_file(upload, io.BytesIO(b"csv"))
+
+    requests = httpx_mock.get_requests()
+    assert [request.url.host for request in requests] == [f"storage.{suffix}", f"storage2.{suffix}"]
+    assert requests[1].url.path == requests[0].url.path
+    assert requests[1].url.query == requests[0].url.query
+    assert requests[1].content == b"csv"
+    assert "Authorization" not in requests[1].headers
+
+
+def test_upload_dataset_file_does_not_retry_storage_http_error(httpx_mock: HTTPXMock):
+    from qtsurfer.api.client._generated.models import DatasetUploadSession, DatasetUploadTarget
+
+    url = "https://storage.qtsurfer.net/uploads/upload-2/raw.csv?X-Amz-Signature=secret"
+    httpx_mock.add_response(url=url, method="PUT", status_code=503)
+    upload = DatasetUploadSession(
+        upload_id="upload-2",
+        upload=DatasetUploadTarget(url=url, expires_in_minutes=15),
+    )
+
+    with pytest.raises(QTSUploadError, match="HTTP 503"):
+        wf.upload_dataset_file(upload, io.BytesIO(b"csv"))
+
+    assert len(httpx_mock.get_requests()) == 1
+
+
 def test_upload_dataset_file_reports_missing_path(tmp_path: Path):
     from qtsurfer.api.client._generated.models import DatasetUploadSession, DatasetUploadTarget
 
