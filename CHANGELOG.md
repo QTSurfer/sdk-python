@@ -2,6 +2,21 @@
 
 All notable changes to `qtsurfer-sdk` are documented here.
 
+## [0.11.0] — 2026-11-19
+
+### Added ✨
+
+- Add `session.attach_live_source()` and `session.detach_live_source()`; both return the typed
+  accepted attachment state while the run reports progress.
+- Preserve the API's generic invalid-credentials response as `QTSAuthError.error`, separate from
+  the typed scope-refusal `QTSAuthError.code`.
+
+### Changed 🔄
+
+- Target OpenAPI `0.128.57`, including API-key expiry metadata, expanded CSV timestamp forms, and
+  live runs that can wait without sources or attach/detach sources while running.
+- Document `AuthTokenResponse.key_exp` and `Account.api_key_expires_at`.
+
 ## [0.10.0] — 2026-11-04
 
 ### Changed 🔄

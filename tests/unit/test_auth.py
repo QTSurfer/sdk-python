@@ -21,6 +21,7 @@ from qtsurfer.api.client._generated.models import AuthTokenResponse
 from qtsurfer_sdk import (
     APIKEY_ENV_VAR,
     AuthTokenErrorCode,
+    AuthTokenRejectedError,
     InMemoryTokenStore,
     QTSAuthError,
     auth,
@@ -29,23 +30,28 @@ from qtsurfer_sdk._session import DEFAULT_BASE_URL, _resolve_apikey
 
 
 @pytest.mark.parametrize(
-    "status,code",
+    ("status", "payload", "code", "expected_error"),
     [
-        (403, AuthTokenErrorCode.APIKEY_WITHOUT_SCOPES),
-        (401, AuthTokenErrorCode.INVALID_APIKEY),
-        (401, AuthTokenErrorCode.APIKEY_REVOKED),
-        (401, AuthTokenErrorCode.APIKEY_EXPIRED),
+        (
+            403,
+            {
+                "code": "apikey_without_scopes",
+                "message": "Create a key with at least one scope in the web app.",
+            },
+            AuthTokenErrorCode.APIKEY_WITHOUT_SCOPES,
+            None,
+        ),
+        (401, {"error": "invalid_credentials"}, None, AuthTokenRejectedError.INVALID_CREDENTIALS),
     ],
 )
 def test_auth_failure_preserves_code_message_and_status_without_retry(
-    httpx_mock, base_url, status, code
+    httpx_mock, base_url, status, payload, code, expected_error
 ):
-    message = "Create a key with at least one scope in the web app."
     httpx_mock.add_response(
         url=f"{base_url}/auth/token",
         method="POST",
         status_code=status,
-        json={"code": code.value, "message": message},
+        json=payload,
     )
     store = InMemoryTokenStore()
 
@@ -55,8 +61,12 @@ def test_auth_failure_preserves_code_message_and_status_without_retry(
     error = result.value
     assert error.status == status
     assert error.code is code
-    assert error.message == message
-    assert message in str(error)
+    assert error.error is expected_error
+    expected_message = payload.get(
+        "message", "API key credentials are missing, unknown, revoked, or expired"
+    )
+    assert expected_message in error.message
+    assert expected_message in str(error)
     assert str(status) in str(error)
     assert store.load() is None
     assert len(httpx_mock.get_requests()) == 1
@@ -189,11 +199,12 @@ class TestAuthHelper:
             url=f"{base_url}/auth/token",
             method="POST",
             status_code=401,
-            json={"code": "invalid_apikey", "message": "nope"},
+            json={"error": "invalid_credentials"},
         )
         with pytest.raises(QTSAuthError) as ex:
             auth("ak_bad", base_url=base_url)
         assert "401" in str(ex.value)
+        assert ex.value.error is AuthTokenRejectedError.INVALID_CREDENTIALS
 
 
 # ---- Token store -------------------------------------------------------------

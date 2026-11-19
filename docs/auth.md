@@ -14,6 +14,13 @@ session = auth("ak_...", base_url="https://api.qtsurfer.net/v1")
 The session refreshes once after a `401` and retries that request once. A second failure surfaces to
 the caller.
 
+An expiring API key has a separate lifetime from its JWT. When present, `session.token.key_exp` is
+the key's expiry in seconds since epoch; rotate the key before then. A JWT issued just before the
+key expires remains valid until its own `expires_in` elapses. A key without an expiry omits
+`key_exp`. An invalid, unknown, revoked, or expired key returns `QTSAuthError` with
+`error == AuthTokenRejectedError.INVALID_CREDENTIALS`; the API deliberately does not distinguish
+which case it is.
+
 For requests whose host starts with the `api` DNS label, the underlying API client retries once after
 changing that label to `api2` while preserving the suffix. For example, `api.qtsurfer.net` retries
 through `api2.qtsurfer.net`. Each new request starts at the primary host; HTTP status responses and
@@ -28,13 +35,15 @@ This also applies if a token refresh fails during another request: the original 
 retried after the rejected refresh.
 
 ```python
-from qtsurfer_sdk import AuthTokenErrorCode, QTSAuthError, auth
+from qtsurfer_sdk import AuthTokenErrorCode, AuthTokenRejectedError, QTSAuthError, auth
 
 try:
     session = auth()
 except QTSAuthError as error:
     if error.code == AuthTokenErrorCode.APIKEY_WITHOUT_SCOPES:
         print("Create an API key with at least one scope in the web app.")
+    elif error.error is AuthTokenRejectedError.INVALID_CREDENTIALS:
+        print("Check whether the API key is missing, revoked, or expired.")
     raise
 ```
 

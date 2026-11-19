@@ -74,6 +74,50 @@ dex_source = LiveSourceRequest(
 run = session.start_live(strategy_id, StartLiveRequest(sources=[dex_source]))
 ```
 
+## Attach and detach sources
+
+A run can start with `sources=[]` and wait without consuming a live-run slot. Attach a source to
+start it, or attach more while it is already reading. Sources on one run must use the same exchange
+for a CEX feed or the same chain for a DEX feed. The accepted response is not completion: it reports
+`ATTACHING` or `DETACHING` and, for an active run, the market position where the change will take
+effect. Read `session.get_live(strategy_id).attachments` to observe each source's state.
+
+```python
+from qtsurfer.api.client.models import AttachLiveSourceRequest
+from qtsurfer.api.client.types import Unset
+
+accepted = session.attach_live_source(
+    run.run_id,
+    AttachLiveSourceRequest(
+        source=source,
+        warm_from=300,
+        ref="secondary-feed-1",
+    ),
+)
+print(accepted.attachment_id, accepted.state, accepted.effective_at_ms)
+
+current = session.get_live(strategy_id)
+if current is not None and not isinstance(current.attachments, Unset):
+    for attachment in current.attachments:
+        print(attachment.attachment_id, attachment.state, attachment.reason)
+
+detaching = session.detach_live_source(run.run_id, accepted.attachment_id)
+print(detaching.state, detaching.effective_at_ms)
+```
+
+`ref` makes a retried attach safe: the same value on the same run returns the existing attachment.
+Attaching a source the run already has also returns that attachment. `warm_from` defaults as it
+does at start; when a run is already reading another source, adding a DEX pool requires
+`warm_from=0`. Detaching an attachment that is already detached or being detached is safe to repeat.
+Detaching the last source returns the run to `WAITING`; strategy memory is released and paper
+accounts are kept. Any open paper positions in the detached source's instruments are reported as
+gaps. If the platform refuses a DEX pool because the run already follows another pool for the same
+pair, the strategy's `onDetach` callback receives `REFUSED`.
+
+The run's `attachments` list is the source of truth for progress. Its `sources` list contains only
+sources currently being read. A transient command cannot be delivered while no source is attached,
+so `send_live_command()` returns `409` in that state.
+
 The feed emits one candle per second, including flat candles for seconds without trades;
 signal instruments use the pool's pair symbol. A newly followed pool replays warm-up at roughly
 six times market speed: the default can take a few minutes and `warm_from=3600` about ten;
@@ -108,7 +152,11 @@ Set `output=MIX` only when paper events also need to appear in retained signals;
 signal relay and uses account storage.
 
 ```python
-from qtsurfer.api.client.models import LivePaperConfig, LivePaperConfigAccounts, LivePaperConfigOutput
+from qtsurfer.api.client.models import (
+    LivePaperConfig,
+    LivePaperConfigAccounts,
+    LivePaperConfigOutput,
+)
 from qtsurfer_sdk import EquityCurveOutMode, GetLiveRunPaperEquityMeasure
 
 run = session.start_live(
@@ -207,6 +255,8 @@ generated response is a `LiveCommandResult` on `202`; non-2xx responses raise `Q
 the HTTP status and server error message.
 A `503` means the command was not sent and may be retried. The endpoint has no idempotency key, so
 an ambiguous network failure may have delivered a distinct command; avoid blind retries.
+If the run has no attached source, the API returns `409` because there is no feed position at which
+to deliver the command.
 
 ## Retained signals
 

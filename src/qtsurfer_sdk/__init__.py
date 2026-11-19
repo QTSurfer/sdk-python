@@ -12,6 +12,7 @@ a long-lived API key for a short-lived JWT and returns an
 
 from qtsurfer.api.client.models import (
     AuthTokenErrorCode,
+    AuthTokenRejectedError,
     EquityCurveOutMode,
     ErrorNextCall,
     GetLiveRunPaperEquityMeasure,
@@ -45,6 +46,7 @@ __all__ = [
     "APIKEY_ENV_VAR",
     "AuthenticatedSession",
     "AuthTokenErrorCode",
+    "AuthTokenRejectedError",
     "EquityCurveOutMode",
     "ErrorNextCall",
     "GetLiveRunPaperEquityMeasure",

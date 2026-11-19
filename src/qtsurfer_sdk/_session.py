@@ -19,7 +19,11 @@ from qtsurfer.api.client import AuthenticatedClient as _GenAuthClient
 from qtsurfer.api.client._generated.api.auth.authenticate import (
     sync_detailed as _auth_sync_detailed,
 )
-from qtsurfer.api.client._generated.models import AuthTokenError, AuthTokenResponse
+from qtsurfer.api.client._generated.models import (
+    AuthTokenError,
+    AuthTokenRejected,
+    AuthTokenResponse,
+)
 from qtsurfer.api.client._generated.types import Response
 from qtsurfer.api.client.models import (
     EquityCurveOutMode,
@@ -96,18 +100,22 @@ class AuthenticatedSession:
         calls carry the new Bearer header.
         """
         with self._lock:
-            resp: Response[AuthTokenResponse | AuthTokenError | None] = _auth_sync_detailed(
-                client=self._mint_client
+            resp: Response[AuthTokenResponse | AuthTokenError | AuthTokenRejected | None] = (
+                _auth_sync_detailed(client=self._mint_client)
             )
             if resp.status_code != 200 or not isinstance(resp.parsed, AuthTokenResponse):
                 error = resp.parsed if isinstance(resp.parsed, AuthTokenError) else None
+                rejected = resp.parsed if isinstance(resp.parsed, AuthTokenRejected) else None
                 message = f"auth() failed: HTTP {resp.status_code}"
                 if error is not None:
                     message += f": {error.message}"
+                elif rejected is not None:
+                    message += ": API key credentials are missing, unknown, revoked, or expired"
                 raise QTSAuthError(
                     message,
                     status=int(resp.status_code),
                     code=error.code if error is not None else None,
+                    error=rejected.error if rejected is not None else None,
                     server_message=error.message if error is not None else None,
                 )
             self._cached = resp.parsed
@@ -197,6 +205,16 @@ class AuthenticatedSession:
         from qtsurfer_sdk import _workflows as wf
 
         return wf.start_live(self, strategy_id, request)
+
+    def attach_live_source(self, run_id: str, request):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.attach_live_source(self, run_id, request)
+
+    def detach_live_source(self, run_id: str, attachment_id: str):
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.detach_live_source(self, run_id, attachment_id)
 
     def get_live(self, strategy_id: str):
         from qtsurfer_sdk import _workflows as wf

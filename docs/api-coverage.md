@@ -1,6 +1,6 @@
 # API coverage
 
-This update targets API spec **0.128.49** through `qtsurfer-api-client==0.128.49`.
+This update targets API spec **0.128.57** through `qtsurfer-api-client==0.128.57`.
 Every OpenAPI operation is accounted for below. Endpoint-only entries
 are deliberate choices, called with `session.call(...)`.
 
@@ -12,8 +12,8 @@ are deliberate choices, called with `session.call(...)`.
 | Backtesting | `prepare`, `get_prepare_status`, `execute`, `get_backtest_result`, `cancel_backtest` | Explicit stages preserve durable job ids for application-owned polling. `prepare` returns the effective plan cadence; plan cadence refusals are typed non-retryable `402` errors. |
 | Sweeps | `sweep`, `get_sweep_result`, `get_sweep_sensitivity`, `get_sweep_run_equity_curve`, `cancel_sweep` | The caller owns pagination and polling policy. |
 | Dataset | `create_dataset`, `list_datasets(include_deleted)`, `get_dataset`, `delete_dataset`, `open_dataset_upload`, `upload_dataset_file`, `finalize_dataset_upload`, `get_dataset_upload` | `import_dataset` and `get_dataset_import` remain generated-client operations. Managed imports use plan cadence defaults; DEX per-trade history is retained when included in plan. Deleted entries carry `deleted_at`; presigned upload bytes never carry the API token. |
-| Account | `get_account`, `get_account_usage` | `max_sweep_cartesian` reports the account's Cartesian sweep cap; check shared storage before retaining signals. |
-| Live Execution | `start_live`, `get_live`, `stop_live`, `list_live`, `list_public_live`, `update_live`, `update_live_params`, `send_live_command`, `get_live_signals`, `get_next_live_signals`, `get_live_run_paper`, `get_live_run_paper_equity`, `get_next_live_run_paper_equity` | `sandbox_minutes` controls the plan-aware minimum trial length and is present on start/current-run responses. Paper simulation is opt-in; accounts can be per currency or per instrument. Paper equity exposes the shared curve contract and continuation preserves filters. `mint_live_connection_token` remains generated-client only because the SDK has no managed WebSocket client. |
+| Account | `get_account`, `get_account_usage` | `api_key_expires_at` identifies when the API key stops working; it matches `key_exp` on the token. `max_sweep_cartesian` reports the account's Cartesian sweep cap; check shared storage before retaining signals. |
+| Live Execution | `start_live`, `attach_live_source`, `detach_live_source`, `get_live`, `stop_live`, `list_live`, `list_public_live`, `update_live`, `update_live_params`, `send_live_command`, `get_live_signals`, `get_next_live_signals`, `get_live_run_paper`, `get_live_run_paper_equity`, `get_next_live_run_paper_equity` | A run can wait without a source, or read multiple sources on one feed; attachment calls report acceptance and the run reports progress. `sandbox_minutes` controls the plan-aware minimum trial length and is present on start/current-run responses. Paper simulation is opt-in; accounts can be per currency or per instrument. Paper equity exposes the shared curve contract and continuation preserves filters. `mint_live_connection_token` remains generated-client only because the SDK has no managed WebSocket client. |
 
 The generated `qtsurfer-api-client` is the endpoint-level escape hatch, not a competing SDK
 surface. Its version is pinned with the SDK, so callers must not assume it exposes a newer API spec.
@@ -56,6 +56,8 @@ surface. Its version is pinned with the SDK, so callers must not assume it expos
 | `importDataset` | Endpoint-only `api.dataset.import_dataset`; source-specific imports stay at endpoint layer | [Datasets](datasets.md#import-exchange-history) |
 | `getDatasetImport` | Endpoint-only `api.dataset.get_dataset_import`; application persists ids and polls imports | [Datasets](datasets.md#import-exchange-history) |
 | `startLive` | `start_live` | [Live](live.md) |
+| `attachLiveSource` | `attach_live_source` | [Live](live.md#attach-and-detach-sources) |
+| `detachLiveSource` | `detach_live_source` | [Live](live.md#attach-and-detach-sources) |
 | `getLive` | `get_live` | [Live](live.md) |
 | `stopLive` | `stop_live` | [Live](live.md) |
 | `listLive` | `list_live` (owned runs) | [Live](live.md) |

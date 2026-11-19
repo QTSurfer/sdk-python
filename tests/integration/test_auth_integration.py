@@ -18,7 +18,7 @@ from typing import Any
 import pytest
 from qtsurfer.api.client._generated.models import AuthTokenResponse
 
-from qtsurfer_sdk import QTSAuthError, auth
+from qtsurfer_sdk import AuthTokenRejectedError, QTSAuthError, auth
 
 
 class _Stub:
@@ -45,7 +45,7 @@ def _make_handler(stub: _Stub):
                     return
                 resp = stub.token_responses.pop(0)
                 if isinstance(resp, int):
-                    self._respond(resp, {"code": "invalid_apikey", "message": "x"})
+                    self._respond(resp, {"error": "invalid_credentials"})
                 else:
                     self._respond(200, resp)
             else:
@@ -147,6 +147,7 @@ def test_end_to_end_mint_401_raises_qts_auth_error(stub_server):
         auth("ak_bad", base_url=base_url)
 
     assert "401" in str(ex.value)
+    assert ex.value.error is AuthTokenRejectedError.INVALID_CREDENTIALS
 
 
 def test_end_to_end_authenticated_request_sends_bearer(stub_server):

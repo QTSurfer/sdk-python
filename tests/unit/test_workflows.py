@@ -131,6 +131,66 @@ def test_start_live_passes_sandbox_override_and_duration(token, httpx_mock):
     }
 
 
+def test_attach_and_detach_live_source_use_typed_accepted_responses(token, httpx_mock):
+    from qtsurfer.api.client.models import (
+        AttachLiveSourceRequest,
+        LiveAttachmentAcceptedState,
+        LiveSourceRequest,
+        LiveSourceRequestType,
+        LiveSourceRequestVenueType,
+    )
+
+    httpx_mock.add_response(
+        url=f"{BASE}/live/run-1/attachments",
+        method="POST",
+        status_code=202,
+        json={
+            "attachmentId": "attachment-1",
+            "state": "ATTACHING",
+            "effectiveAtMs": 1_728_000_000_000,
+        },
+    )
+    httpx_mock.add_response(
+        url=f"{BASE}/live/run-1/attachments/attachment-1",
+        method="DELETE",
+        status_code=202,
+        json={
+            "attachmentId": "attachment-1",
+            "state": "DETACHING",
+            "effectiveAtMs": 1_728_000_001_000,
+        },
+    )
+
+    source = LiveSourceRequest(
+        venue_type=LiveSourceRequestVenueType.CEX,
+        exchange="binance",
+        segment="spot",
+        type_=LiveSourceRequestType.TICKER,
+        instruments=["ETH/USDT"],
+    )
+    attached = token.attach_live_source(
+        "run-1", AttachLiveSourceRequest(source=source, warm_from=300, ref="alert-1")
+    )
+    detached = token.detach_live_source("run-1", "attachment-1")
+
+    assert attached.attachment_id == "attachment-1"
+    assert attached.state is LiveAttachmentAcceptedState.ATTACHING
+    assert detached.state is LiveAttachmentAcceptedState.DETACHING
+    requests = httpx_mock.get_requests()
+    assert json.loads(requests[-2].read()) == {
+        "source": {
+            "venueType": "cex",
+            "exchange": "binance",
+            "segment": "spot",
+            "type": "ticker",
+            "instruments": ["ETH/USDT"],
+        },
+        "warmFrom": 300,
+        "ref": "alert-1",
+    }
+    assert requests[-1].method == "DELETE"
+
+
 @pytest.mark.parametrize(
     ("method", "path", "status", "http_method"),
     [

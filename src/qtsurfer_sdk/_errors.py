@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from qtsurfer.api.client.models import (
     AuthTokenErrorCode,
+    AuthTokenRejectedError,
     ErrorNextCall,
     InsufficientScopeErrorCode,
 )
@@ -53,8 +54,10 @@ class QTSAuthError(QTSError):
     Triggered by:
 
     * No API key supplied (neither argument nor ``QTSURFER_APIKEY`` env var).
-    * ``POST /v1/auth/token`` returned a 4xx (401 for an invalid, revoked or
-      expired key; 403 ``apikey_without_scopes`` where scopes are required).
+    * ``POST /v1/auth/token`` returned a 4xx (401 with
+      ``error == AuthTokenRejectedError.INVALID_CREDENTIALS`` for a missing,
+      unknown, revoked or expired key; 403 ``apikey_without_scopes`` where
+      scopes are required).
     * The endpoint returned a 2xx but the body was empty or undecodeable.
     """
 
@@ -68,13 +71,16 @@ class QTSAuthError(QTSError):
         next_call: ErrorNextCall | None = None,
         retry_after: str | None = None,
         code: AuthTokenErrorCode | None = None,
+        error: AuthTokenRejectedError | None = None,
         server_message: str | None = None,
     ) -> None:
         """Keep the typed authentication code and the server's exact message.
 
         ``apikey_without_scopes`` needs a replacement key with scopes from the
-        web app. It is not retried automatically. ``message`` retains the HTTP
-        context in ``str(error)``; ``error.message`` is the server text when present.
+        web app. It is not retried automatically. For an invalid-credentials
+        response, inspect ``error``; ``code`` is reserved for the typed 403.
+        ``message`` retains the HTTP context in ``str(error)`` and the server
+        message when one is present.
         """
         super().__init__(
             message,
@@ -85,6 +91,7 @@ class QTSAuthError(QTSError):
             retry_after=retry_after,
         )
         self.code = code
+        self.error = error
         self.message = server_message if server_message is not None else message
 
 

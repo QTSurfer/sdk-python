@@ -13,7 +13,7 @@ Opinionated Python SDK for [QTSurfer](https://qtsurfer.com), built on top of
 
 Where `qtsurfer-api-client` gives you one function per API endpoint, this package
 adds **auth helpers**, **token refresh**, **pluggable token storage**, and
-**high-level workflows** (strategies, backtest, sweep, datasets) — go from an API
+**high-level workflows** (strategies, backtest, sweep, datasets, live execution) — go from an API
 key to a typed backtest in a few lines.
 
 > The strategy code itself stays on the JVM — QTSurfer's backtest engine is Java.

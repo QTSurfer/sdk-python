@@ -25,6 +25,7 @@ from qtsurfer.api.client import AuthenticatedClient
 from qtsurfer.api.client._generated.models import (
     Account,
     AccountUsage,
+    AttachLiveSourceRequest,
     CompileStrategyResponse200,
     CreateDatasetBody,
     DatasetCreated,
@@ -37,6 +38,7 @@ from qtsurfer.api.client._generated.models import (
     GetLiveRunPaperEquityMeasure,
     InstrumentListResponse,
     InsufficientScopeError,
+    LiveAttachmentAccepted,
     LiveCommandResult,
     LiveListResponse,
     LivePaper,
@@ -240,6 +242,36 @@ def start_live(
         LiveRunWithStream | None,
         _parsed_call(
             session, lambda c: start_live.sync_detailed(strategy_id, client=c, body=request)
+        ),
+    )
+
+
+def attach_live_source(
+    session: AuthenticatedSession, run_id: str, request: AttachLiveSourceRequest
+) -> LiveAttachmentAccepted | None:
+    """Attach another market-data source to a live run."""
+    from qtsurfer.api.client._generated.api.live_execution import attach_live_source
+
+    return cast(
+        LiveAttachmentAccepted | None,
+        _parsed_call(
+            session,
+            lambda c: attach_live_source.sync_detailed(run_id, client=c, body=request),
+        ),
+    )
+
+
+def detach_live_source(
+    session: AuthenticatedSession, run_id: str, attachment_id: str
+) -> LiveAttachmentAccepted | None:
+    """Detach a source while leaving the live run active."""
+    from qtsurfer.api.client._generated.api.live_execution import detach_live_source
+
+    return cast(
+        LiveAttachmentAccepted | None,
+        _parsed_call(
+            session,
+            lambda c: detach_live_source.sync_detailed(run_id, attachment_id, client=c),
         ),
     )
 

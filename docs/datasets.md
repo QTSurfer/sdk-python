@@ -47,6 +47,9 @@ state = session.get_dataset_upload(
 Poll `get_dataset_upload(dataset_id, upload_id)` until the state is ready or failed. Only a ready
 version is usable; it records the discovered range, cadence, row count, and gap details. See the API
 [dataset reference](https://www.qtsurfer.com/docs/developers/api/datasets) for CSV columns and validation.
+CSV timestamps may be a date or date-time. A date alone means midnight UTC; a date-time without
+`Z` or an offset is UTC. Day-first and month-first dates are ambiguous and are rejected; the upload
+failure names the line and accepted forms.
 Once ready, `Dataset.type_` describes the ingested rows rather than the way they were created: a
 file of candles is `klines`, and a `kline` backtest requires a ready `klines` version. A `ticker`
 backtest accepts either type. Before the first version is ready, the type is only the creation label.
@@ -179,7 +182,9 @@ solana_request = DatasetImportRequest(
         contract="Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
     ),
 )
-response = session.call(lambda client: import_dataset.sync_detailed(client=client, body=solana_request))
+response = session.call(
+    lambda client: import_dataset.sync_detailed(client=client, body=solana_request)
+)
 ```
 
 Read `session.get_account().max_import_range_hours` before choosing a range. Imports count
