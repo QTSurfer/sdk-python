@@ -68,6 +68,8 @@ def test_scope_map_from_get_account_and_discovery(httpx_mock):
             "maxRangeDays": 7,
             "maxSweepCartesian": 10,
             "maxImportRangeHours": 24,
+            "maxCexImportRangeHours": 168,
+            "maxConcurrentImports": 2,
             "maxDatasets": 10,
             "maxDatasetBytes": 1000,
             "maxTotalStorageBytes": 2000,

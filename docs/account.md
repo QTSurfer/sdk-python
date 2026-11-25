@@ -21,9 +21,15 @@ print("Cartesian sweep cap:", account.max_sweep_cartesian)
 print("API key expires at:", account.api_key_expires_at)
 ```
 
+For dataset imports, `max_import_range_hours` covers DEX pools and
+`max_cex_import_range_hours` covers exchange history. `max_concurrent_imports` caps
+queued and running imports. When present, `max_cex_history_days` and
+`max_cex_import_instruments_per_month` describe exchange history and monthly instrument quotas.
+
 ## Read current usage
 
-`get_account_usage()` reports dataset, strategy, signal, and aggregate usage.
+`get_account_usage()` reports dataset, strategy, signal, and aggregate usage. The optional `cex_import_month` and
+`cex_import_instruments` report usage per exchange and segment for the current UTC month.
 
 ```python
 usage = session.get_account_usage()

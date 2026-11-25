@@ -26,10 +26,17 @@ from qtsurfer.api.client._generated.models import (
     Account,
     AccountUsage,
     AttachLiveSourceRequest,
+    Collection,
+    CollectionCreateRequest,
+    CollectionDeleted,
+    CollectionList,
+    CollectionUpdateRequest,
     CompileStrategyResponse200,
     CreateDatasetBody,
     DatasetCreated,
+    DatasetMoveRequest,
     DatasetUploadSession,
+    DatasetWithLinks,
     DataSourceType,
     EquityCurveOutMode,
     ErrorNextCall,
@@ -38,11 +45,13 @@ from qtsurfer.api.client._generated.models import (
     GetLiveRunPaperEquityMeasure,
     InstrumentListResponse,
     InsufficientScopeError,
+    ListDatasetsResponse200,
     LiveAttachmentAccepted,
     LiveCommandResult,
     LiveListResponse,
     LivePaper,
     LivePaperEquityCurve,
+    LiveParamsUpdateResult,
     LiveRun,
     LiveRunWithStream,
     LiveSignalPage,
@@ -61,7 +70,7 @@ from qtsurfer.api.client._generated.models import (
     UpdateLiveRequest,
     WalkForwardRequest,
 )
-from qtsurfer.api.client._generated.types import UNSET, Response
+from qtsurfer.api.client._generated.types import UNSET, Response, Unset
 
 from qtsurfer_sdk._errors import (
     QTSCompileError,
@@ -341,7 +350,8 @@ def update_live(session: AuthenticatedSession, run_id: str, request: UpdateLiveR
 
 def update_live_params(
     session: AuthenticatedSession, run_id: str, request: Mapping[str, Any] | UpdateLiveParamsRequest
-):
+) -> LiveParamsUpdateResult | None:
+    """Update parameters; waiting runs omit the effective time."""
     from qtsurfer.api.client._generated.api.live_execution import update_live_params
 
     body = (
@@ -349,9 +359,10 @@ def update_live_params(
         if isinstance(request, UpdateLiveParamsRequest)
         else UpdateLiveParamsRequest(params=UpdateLiveParamsRequestParams.from_dict(dict(request)))
     )
-    return _parsed_call(
+    result = _parsed_call(
         session, lambda c: update_live_params.sync_detailed(run_id, client=c, body=body)
     )
+    return cast(LiveParamsUpdateResult | None, result)
 
 
 def get_live_signals(
@@ -776,22 +787,38 @@ def create_dataset(
     *,
     name: str,
     instrument: str,
-):
+    collection_id: str | None = None,
+) -> DatasetCreated | None:
     """Create a dataset + an upload session; returns ``DatasetCreated`` with a presigned URL."""
     from qtsurfer.api.client._generated.api.dataset import create_dataset
 
-    body = CreateDatasetBody(name=name, instrument=instrument)
-    return _parsed_call(session, lambda c: create_dataset.sync_detailed(client=c, body=body))
+    body = CreateDatasetBody(
+        name=name,
+        instrument=instrument,
+        collection_id=UNSET if collection_id is None else collection_id,
+    )
+    result = _parsed_call(session, lambda c: create_dataset.sync_detailed(client=c, body=body))
+    return cast(DatasetCreated | None, result)
 
 
-def list_datasets(session: AuthenticatedSession, *, include_deleted: bool = False):
-    """List your datasets, optionally including deleted entries."""
+def list_datasets(
+    session: AuthenticatedSession,
+    *,
+    include_deleted: bool = False,
+    collection_id: str | None = None,
+) -> ListDatasetsResponse200 | None:
+    """List datasets, optionally including deleted entries or filtering by collection."""
     from qtsurfer.api.client._generated.api.dataset import list_datasets
 
-    return _parsed_call(
+    result = _parsed_call(
         session,
-        lambda c: list_datasets.sync_detailed(client=c, include_deleted=include_deleted),
+        lambda c: list_datasets.sync_detailed(
+            client=c,
+            include_deleted=include_deleted,
+            collection_id=UNSET if collection_id is None else collection_id,
+        ),
     )
+    return cast(ListDatasetsResponse200 | None, result)
 
 
 def get_dataset(session: AuthenticatedSession, dataset_id: str):
@@ -806,6 +833,81 @@ def delete_dataset(session: AuthenticatedSession, dataset_id: str):
     from qtsurfer.api.client._generated.api.dataset import delete_dataset
 
     return _parsed_call(session, lambda c: delete_dataset.sync_detailed(dataset_id, client=c))
+
+
+def create_collection(
+    session: AuthenticatedSession, *, name: str, description: str | None = None
+) -> Collection | None:
+    from qtsurfer.api.client.api.dataset import create_collection
+
+    body = CollectionCreateRequest(
+        name=name, description=UNSET if description is None else description
+    )
+    return cast(
+        Collection | None,
+        _parsed_call(session, lambda c: create_collection.sync_detailed(client=c, body=body)),
+    )
+
+
+def get_collections(session: AuthenticatedSession) -> CollectionList | None:
+    from qtsurfer.api.client.api.dataset import list_collections
+
+    return cast(
+        CollectionList | None,
+        _parsed_call(session, lambda c: list_collections.sync_detailed(client=c)),
+    )
+
+
+def get_collection(session: AuthenticatedSession, collection_id: str) -> Collection | None:
+    from qtsurfer.api.client.api.dataset import get_collection
+
+    return cast(
+        Collection | None,
+        _parsed_call(session, lambda c: get_collection.sync_detailed(collection_id, client=c)),
+    )
+
+
+def update_collection(
+    session: AuthenticatedSession,
+    collection_id: str,
+    *,
+    name: str | Unset = UNSET,
+    description: str | None | Unset = UNSET,
+) -> Collection | None:
+    from qtsurfer.api.client.api.dataset import update_collection
+
+    body = CollectionUpdateRequest(name=name, description=description)
+    return cast(
+        Collection | None,
+        _parsed_call(
+            session, lambda c: update_collection.sync_detailed(collection_id, client=c, body=body)
+        ),
+    )
+
+
+def delete_collection(
+    session: AuthenticatedSession, collection_id: str
+) -> CollectionDeleted | None:
+    from qtsurfer.api.client.api.dataset import delete_collection
+
+    return cast(
+        CollectionDeleted | None,
+        _parsed_call(session, lambda c: delete_collection.sync_detailed(collection_id, client=c)),
+    )
+
+
+def move_dataset(
+    session: AuthenticatedSession, dataset_id: str, *, collection_id: str | None
+) -> DatasetWithLinks | None:
+    from qtsurfer.api.client.api.dataset import move_dataset
+
+    body = DatasetMoveRequest(collection_id=collection_id)
+    return cast(
+        DatasetWithLinks | None,
+        _parsed_call(
+            session, lambda c: move_dataset.sync_detailed(dataset_id, client=c, body=body)
+        ),
+    )
 
 
 def open_dataset_upload(session: AuthenticatedSession, dataset_id: str):

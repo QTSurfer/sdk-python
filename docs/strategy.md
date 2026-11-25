@@ -25,10 +25,10 @@ before retrying. `get_strategy()` does not return this compile-only field.
 
 ```python
 from qtsurfer.api.client.models import CompileStrategyResponse200RequiresItem
-from qtsurfer.api.client.types import UNSET
+from qtsurfer.api.client import types
 
 compiled = session.compile_strategy(source)
-if compiled.requires is not UNSET and CompileStrategyResponse200RequiresItem.INDICATORS_PRO in compiled.requires:
+if compiled.requires is not types.UNSET and CompileStrategyResponse200RequiresItem.INDICATORS_PRO in compiled.requires:
     print("This strategy needs a plan with Pro indicators")
 ```
 
@@ -71,3 +71,6 @@ A passed bounded validation is not a trading-performance or safety guarantee.
 For indicators, `emitBuy`/`emitSell`, information signals, order configuration, and chart metadata,
 see the API's [Coding Java strategies](https://www.qtsurfer.com/docs/strategies/java/strategy_coding) guide
 and the [`qtsurfer-java-strategy`](https://github.com/QTSurfer/strategy-skills) skill.
+
+Strategy registration, status, and listings expose the declared `name` when present and
+`language` (`java` or `qtscript`). Use those fields to label lists without fetching source.

@@ -187,6 +187,7 @@ def test_attach_and_detach_live_source_use_typed_accepted_responses(token, httpx
         },
         "warmFrom": 300,
         "ref": "alert-1",
+        "resolveInstrument": True,
     }
     assert requests[-1].method == "DELETE"
 
@@ -686,3 +687,33 @@ def test_upload_dataset_file_reports_missing_path(tmp_path: Path):
 
     with pytest.raises(QTSUploadError, match="source could not be read"):
         wf.upload_dataset_file(upload, tmp_path / "missing.csv")
+
+
+def test_waiting_live_param_update_omits_effective_time(token, httpx_mock):
+    from qtsurfer.api.client import types
+
+    httpx_mock.add_response(
+        url=f"{BASE}/live/run-1/params",
+        method="PUT",
+        json={"runId": "run-1", "paramsVersion": 2},
+    )
+
+    result = token.update_live_params("run-1", {"emaFast": 12})
+
+    assert result.params_version == 2
+    assert isinstance(result.effective_at_ms, types.Unset)
+
+
+def test_move_dataset_to_root_sends_explicit_null(token, httpx_mock):
+    httpx_mock.add_response(
+        url=f"{BASE}/datasets/ds-1",
+        method="PATCH",
+        status_code=404,
+        json={"code": 404, "message": "Dataset not found"},
+    )
+
+    with pytest.raises(QTSError) as error:
+        token.move_dataset("ds-1", collection_id=None)
+
+    assert error.value.status == 404
+    assert json.loads(httpx_mock.get_requests()[-1].read()) == {"collectionId": None}

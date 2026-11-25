@@ -74,17 +74,21 @@ dex_source = LiveSourceRequest(
 run = session.start_live(strategy_id, StartLiveRequest(sources=[dex_source]))
 ```
 
+The Solana `pumpfun` segment follows a token from its bonding curve to its PumpSwap
+pool when the segment appears in `live_segments`. Pass its case-sensitive mint as the
+single instrument of a `dex` kline source. This segment has no instrument listing.
+
 ## Attach and detach sources
 
 A run can start with `sources=[]` and wait without consuming a live-run slot. Attach a source to
 start it, or attach more while it is already reading. Sources on one run must use the same exchange
-for a CEX feed or the same chain for a DEX feed. The accepted response is not completion: it reports
+for a CEX feed or the same chain and protocol for a DEX feed. The accepted response is not completion: it reports
 `ATTACHING` or `DETACHING` and, for an active run, the market position where the change will take
 effect. Read `session.get_live(strategy_id).attachments` to observe each source's state.
 
 ```python
 from qtsurfer.api.client.models import AttachLiveSourceRequest
-from qtsurfer.api.client.types import Unset
+from qtsurfer.api.client import types
 
 accepted = session.attach_live_source(
     run.run_id,
@@ -97,7 +101,7 @@ accepted = session.attach_live_source(
 print(accepted.attachment_id, accepted.state, accepted.effective_at_ms)
 
 current = session.get_live(strategy_id)
-if current is not None and not isinstance(current.attachments, Unset):
+if current is not None and not isinstance(current.attachments, types.Unset):
     for attachment in current.attachments:
         print(attachment.attachment_id, attachment.state, attachment.reason)
 
@@ -118,13 +122,12 @@ The run's `attachments` list is the source of truth for progress. Its `sources` 
 sources currently being read. A transient command cannot be delivered while no source is attached,
 so `send_live_command()` returns `409` in that state.
 
-The feed emits one candle per second, including flat candles for seconds without trades;
-signal instruments use the pool's pair symbol. A newly followed pool replays warm-up at roughly
-six times market speed: the default can take a few minutes and `warm_from=3600` about ten;
-the run can show `LAGGING` while catching up. A pool already followed replays only the history
-available for it, which can be shorter than the requested warm-up.
-Invalid pools and pools the platform has no room to follow fail within seconds with
-`desired: STOPPED`, freeing the active slot. Treat unknown reason text as an opaque failure.
+The feed emits one candle per second, including flat candles for seconds without trades.
+A DEX signal can expose the pool address or token mint as `instrument.id`.
+Attachments default to resolving a pool's pair on its first candle. Pass
+`resolve_instrument=False` for immediate attachment with an instrument based on the pool address.
+A strategy can also detach its own source. Its attachment ends as `DETACHED` with reason
+`STRATEGY`; the REST signal history records a `system` signal with kind `DETACH`.
 
 Once a compiled strategy has passed its sandbox trial, subsequent runs start directly in `LIVE`.
 Pass `sandbox=True` in `StartLiveRequest` to run it through `SANDBOX` again, for example to inspect
@@ -227,13 +230,18 @@ for item in public_page.runs:
 
 `update_live(run_id, request)` changes name, description, or visibility. `update_live_params(run_id,
 params)` changes declared parameters while the run stays active. Pass a plain mapping for the common
-path; a generated request model is accepted for extensions.
+path; a generated request model is accepted for extensions. A run in `WAITING` saves the
+parameters for its first source. The result omits `effective_at_ms` in that state.
 
 ```python
 from qtsurfer.api.client.models import UpdateLiveRequest
 
 session.update_live(run.run_id, UpdateLiveRequest(description="US session"))
-session.update_live_params(run.run_id, {"emaFast": 12})
+from qtsurfer.api.client import types
+
+updated = session.update_live_params(run.run_id, {"emaFast": 12})
+if updated is not None and not isinstance(updated.effective_at_ms, types.Unset):
+    print("Effective at:", updated.effective_at_ms)
 ```
 
 `send_live_command(run_id, command, properties=None)` sends an owner-only transient event to a
@@ -261,7 +269,8 @@ to deliver the command.
 ## Retained signals
 
 `get_live_signals(run_id, since_ms=None, instrument=None, signal_type=None, cursor=None, limit=None)` returns
-oldest-first signals. `signal_type="paper"` selects paper events when the run uses `paper.output=MIX`.
+oldest-first signals. Request `signal_type="system"` explicitly to read strategy detach
+records. These records are only available through REST. `signal_type="paper"` selects paper events when the run uses `paper.output=MIX`.
 `cursor` takes precedence over `since_ms`; deduplicate `signal_id` when
 combining history and real-time delivery. If a cursor expires, restart without it and use
 `available_since_ms` as the earliest readable point.

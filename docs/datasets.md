@@ -159,9 +159,8 @@ limited by plan cadences.
 
 Solana DEX imports are candle-only. Even Elite uses its plan default (`1s`) when cadence is omitted;
 `id`, `version`, and `factory` are never needed. The pool address is base58 and case-sensitive.
-Candle imports whose `from_` is earlier than 180 days before the request return `400` immediately on
-every network; per-trade DEX imports and CEX imports are not subject to that history limit. DEX
-candles may be sparse: an interval with no trades can have no bar.
+Imports outside available candle history return `400`. DEX candles may be sparse: an interval with
+no trades can have no bar.
 
 ```python
 from qtsurfer.api.client.models import (
@@ -193,3 +192,29 @@ reports tier/quota restrictions, `400` malformed inputs, and failed states inclu
 unresolvable pool, old source history, cadence or time-ceiling failures. Persist ids to
 resume polling instead of resubmitting and creating another dataset. A ready dataset uses
 the same `exchange_id="user"` preparation path as uploads; only the ready version is usable.
+
+
+## Collections
+
+```python
+collection = session.create_collection(name="Research", description="Reusable datasets")
+assert collection is not None
+session.move_dataset(dataset_id, collection_id=collection.collection_id)
+session.list_datasets(collection_id=collection.collection_id)
+session.move_dataset(dataset_id, collection_id=None)  # back to root
+root_datasets = session.list_datasets(collection_id="none", include_deleted=True)
+```
+
+Pass `collection_id` to `create_dataset` or the generated `import_dataset` request to
+place a new dataset directly in a collection. With no filter, `list_datasets` lists
+datasets across collections and the root. Dataset names are unique across the account.
+Use `get_collections` or `get_collection` to inspect counts, `update_collection` to rename
+or clear a description, and `delete_collection` to return its datasets to the root.
+A full collection quota raises `QTSError` with `reason == "COLLECTIONS_LIMIT"` and
+`retryable == False`. Collection operations use the same dataset scopes as other dataset calls.
+
+The dataset's `meta` map describes its creation, including source and range for imports.
+For exchange imports, compare the range to `session.get_account().max_cex_import_range_hours`.
+The API can also refuse imports based on history, file size, minimum bars, monthly instrument quota,
+or concurrent imports. Only the concurrent-import quota clears automatically and carries
+`Retry-After`; the generated endpoint exposes the reason and response headers.

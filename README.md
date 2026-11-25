@@ -30,6 +30,7 @@ The hand-written guides mirror the SDK family structure.
 - [Dataset uploads](https://github.com/QTSurfer/sdk-python/blob/main/docs/datasets.md)
 - [Account limits and storage usage](https://github.com/QTSurfer/sdk-python/blob/main/docs/account.md)
 - [Live execution](https://github.com/QTSurfer/sdk-python/blob/main/docs/live.md)
+- [Signal channels](https://github.com/QTSurfer/sdk-python/blob/main/docs/signals.md)
 - [API coverage](https://github.com/QTSurfer/sdk-python/blob/main/docs/api-coverage.md)
 
 ## Installation

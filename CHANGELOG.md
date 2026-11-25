@@ -2,6 +2,23 @@
 
 All notable changes to `qtsurfer-sdk` are documented here.
 
+## [0.12.0] — 2026-11-25
+
+### Added ✨
+
+- Manage dataset collections with `create_collection`, `get_collections`, `get_collection`,
+  `update_collection`, and `delete_collection`. Use `move_dataset` to file or move a dataset
+  back to the root, and `list_datasets(collection_id="none")` to list datasets at the root.
+- Document signal channels, offers, codes, subscriptions and deliveries through the
+  generated client.
+
+### Changed 🔄
+
+- Adopt OpenAPI `0.128.70`. Explore Solana pool catalogues, follow tokens by mint,
+  inspect strategy identity and dataset provenance, and read exchange import quotas.
+- Parameter updates on waiting runs can omit the effective time. Inspect REST system
+  signals for strategy-initiated detaches.
+
 ## [0.11.0] — 2026-11-19
 
 ### Added ✨

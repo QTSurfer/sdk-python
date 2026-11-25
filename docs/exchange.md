@@ -83,3 +83,7 @@ Provisional bytes can grow: do not archive them as a complete hour. `404 NO_DATA
 the stored hour contains no instrument rows. `503 TEMPORARILY_UNAVAILABLE` is retryable
 after `Retry-After`; malformed/future hours are `400`. Unknown reasons should be handled
 like an absent reason, using status and message.
+
+Discover Solana pool catalogues by segment with `list_instruments("solana", segment=...)`.
+Use the case-sensitive base58 pool id as listed. A pool may omit `fee_percent`; see
+`live_segments` for the sources you can run live.

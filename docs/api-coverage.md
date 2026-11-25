@@ -1,6 +1,6 @@
 # API coverage
 
-This update targets API spec **0.128.57** through `qtsurfer-api-client==0.128.57`.
+This update targets API spec **0.128.70** through `qtsurfer-api-client==0.128.70`.
 Every OpenAPI operation is accounted for below. Endpoint-only entries
 are deliberate choices, called with `session.call(...)`.
 
@@ -11,12 +11,11 @@ are deliberate choices, called with `session.call(...)`.
 | Strategy | `compile_strategy`, `validate_strategy`, `get_strategy`, `list_strategies(include_deleted)`, `get_strategy_code`, `delete_strategy` | `compile_strategy` adapts `text/plain`, unsupported by the generator, and returns plan `requires`; `402` refusals expose an optional upgrade URL. Deleted entries carry `deleted_at`. |
 | Backtesting | `prepare`, `get_prepare_status`, `execute`, `get_backtest_result`, `cancel_backtest` | Explicit stages preserve durable job ids for application-owned polling. `prepare` returns the effective plan cadence; plan cadence refusals are typed non-retryable `402` errors. |
 | Sweeps | `sweep`, `get_sweep_result`, `get_sweep_sensitivity`, `get_sweep_run_equity_curve`, `cancel_sweep` | The caller owns pagination and polling policy. |
-| Dataset | `create_dataset`, `list_datasets(include_deleted)`, `get_dataset`, `delete_dataset`, `open_dataset_upload`, `upload_dataset_file`, `finalize_dataset_upload`, `get_dataset_upload` | `import_dataset` and `get_dataset_import` remain generated-client operations. Managed imports use plan cadence defaults; DEX per-trade history is retained when included in plan. Deleted entries carry `deleted_at`; presigned upload bytes never carry the API token. |
+| Dataset | `create_dataset`, `list_datasets(include_deleted, collection_id)`, `get_dataset`, `delete_dataset`, `open_dataset_upload`, `upload_dataset_file`, `finalize_dataset_upload`, `get_dataset_upload` | `import_dataset` and `get_dataset_import` remain generated-client operations. Managed imports use plan cadence defaults; DEX per-trade history is retained when included in plan. Deleted entries carry `deleted_at`; presigned upload bytes never carry the API token. |
 | Account | `get_account`, `get_account_usage` | `api_key_expires_at` identifies when the API key stops working; it matches `key_exp` on the token. `max_sweep_cartesian` reports the account's Cartesian sweep cap; check shared storage before retaining signals. |
 | Live Execution | `start_live`, `attach_live_source`, `detach_live_source`, `get_live`, `stop_live`, `list_live`, `list_public_live`, `update_live`, `update_live_params`, `send_live_command`, `get_live_signals`, `get_next_live_signals`, `get_live_run_paper`, `get_live_run_paper_equity`, `get_next_live_run_paper_equity` | A run can wait without a source, or read multiple sources on one feed; attachment calls report acceptance and the run reports progress. `sandbox_minutes` controls the plan-aware minimum trial length and is present on start/current-run responses. Paper simulation is opt-in; accounts can be per currency or per instrument. Paper equity exposes the shared curve contract and continuation preserves filters. `mint_live_connection_token` remains generated-client only because the SDK has no managed WebSocket client. |
 
-The generated `qtsurfer-api-client` is the endpoint-level escape hatch, not a competing SDK
-surface. Its version is pinned with the SDK, so callers must not assume it exposes a newer API spec.
+The generated `qtsurfer-api-client` provides the endpoint-level surface. The SDK pins its version.
 
 ## Operation coverage
 
@@ -47,9 +46,15 @@ surface. Its version is pinned with the SDK, so callers must not assume it expos
 | `getSweepSensitivity` | `get_sweep_sensitivity` | [Backtesting](backtesting.md) |
 | `getSweepRunEquityCurve` | `get_sweep_run_equity_curve` | [Backtesting](backtesting.md) |
 | `createDataset` | `create_dataset` | [Datasets](datasets.md) |
-| `listDatasets` | `list_datasets(include_deleted=False)` | [Datasets](datasets.md) |
+| `listDatasets` | `list_datasets(include_deleted=False, collection_id=None)` | [Datasets](datasets.md) |
 | `getDataset` | `get_dataset` | [Datasets](datasets.md) |
 | `deleteDataset` | `delete_dataset` | [Datasets](datasets.md) |
+| `moveDataset` | `move_dataset` | [Collections](datasets.md#collections) |
+| `createCollection` | `create_collection` | [Collections](datasets.md#collections) |
+| `listCollections` | `get_collections` | [Collections](datasets.md#collections) |
+| `getCollection` | `get_collection` | [Collections](datasets.md#collections) |
+| `updateCollection` | `update_collection` | [Collections](datasets.md#collections) |
+| `deleteCollection` | `delete_collection` | [Collections](datasets.md#collections) |
 | `openDatasetUpload` | `open_dataset_upload`; `upload_dataset_file` sends bytes separately | [Datasets](datasets.md) |
 | `finalizeDatasetUpload` | `finalize_dataset_upload` | [Datasets](datasets.md) |
 | `getDatasetUpload` | `get_dataset_upload` | [Datasets](datasets.md) |
@@ -72,6 +77,28 @@ surface. Its version is pinned with the SDK, so callers must not assume it expos
 | `rotateLiveStream` | Endpoint-only `api.live_execution.rotate_live_stream`; SDK has no managed connection | [Live](live.md#run-ids-and-stream-urls) |
 | `revokeLiveStream` | Endpoint-only `api.live_execution.revoke_live_stream`; SDK has no managed connection | [Live](live.md#run-ids-and-stream-urls) |
 | `mintLiveConnectionToken` | Endpoint-only `api.live_execution.mint_live_connection_token`; SDK has no managed connection | [Live](live.md#run-ids-and-stream-urls) |
+| `cancelSignalSubscription` | Endpoint-only `api.signal_channels.cancel_signal_subscription` | [Signal channels](signals.md) |
+| `createSignalChannel` | Endpoint-only `api.signal_channels.create_signal_channel` | [Signal channels](signals.md) |
+| `createSignalOffer` | Endpoint-only `api.signal_channels.create_signal_offer` | [Signal channels](signals.md) |
+| `deleteSignalChannel` | Endpoint-only `api.signal_channels.delete_signal_channel` | [Signal channels](signals.md) |
+| `feedSignalSubscriptionRun` | Endpoint-only `api.signal_channels.feed_signal_subscription_run` | [Signal channels](signals.md) |
+| `getSignalChannel` | Endpoint-only `api.signal_channels.get_signal_channel` | [Signal channels](signals.md) |
+| `getSignalSubscription` | Endpoint-only `api.signal_channels.get_signal_subscription` | [Signal channels](signals.md) |
+| `listPublicSignalChannels` | Endpoint-only `api.signal_channels.list_public_signal_channels` | [Signal channels](signals.md) |
+| `listSignalChannels` | Endpoint-only `api.signal_channels.list_signal_channels` | [Signal channels](signals.md) |
+| `listSignalCodes` | Endpoint-only `api.signal_channels.list_signal_codes` | [Signal channels](signals.md) |
+| `listSignalDeliveries` | Endpoint-only `api.signal_channels.list_signal_deliveries` | [Signal channels](signals.md) |
+| `listSignalNotices` | Endpoint-only `api.signal_channels.list_signal_notices` | [Signal channels](signals.md) |
+| `listSignalOffers` | Endpoint-only `api.signal_channels.list_signal_offers` | [Signal channels](signals.md) |
+| `listSignalSubscriptions` | Endpoint-only `api.signal_channels.list_signal_subscriptions` | [Signal channels](signals.md) |
+| `mintSignalCodes` | Endpoint-only `api.signal_channels.mint_signal_codes` | [Signal channels](signals.md) |
+| `publishSignalNotice` | Endpoint-only `api.signal_channels.publish_signal_notice` | [Signal channels](signals.md) |
+| `publishSignalNoticeByHook` | Endpoint-only `api.signal_channels.publish_signal_notice_by_hook` | [Signal channels](signals.md) |
+| `redeemSignalCode` | Endpoint-only `api.signal_channels.redeem_signal_code` | [Signal channels](signals.md) |
+| `renewSignalSubscription` | Endpoint-only `api.signal_channels.renew_signal_subscription` | [Signal channels](signals.md) |
+| `revokeSignalCode` | Endpoint-only `api.signal_channels.revoke_signal_code` | [Signal channels](signals.md) |
+| `stopFeedingSignalSubscriptionRun` | Endpoint-only `api.signal_channels.stop_feeding_signal_subscription_run` | [Signal channels](signals.md) |
+| `updateSignalChannel` | Endpoint-only `api.signal_channels.update_signal_channel` | [Signal channels](signals.md) |
 
-AsyncAPI 0.3.0 `history` is also not part of the generated REST client. The SDK does not manage a
+AsyncAPI 0.4.0 `history` is also not part of the generated REST client. The SDK does not manage a
 WebSocket connection, so callers that need it must use a compatible WebSocket/Centrifugo client.

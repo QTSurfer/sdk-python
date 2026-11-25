@@ -24,12 +24,19 @@ from qtsurfer.api.client._generated.models import (
     AuthTokenRejected,
     AuthTokenResponse,
 )
-from qtsurfer.api.client._generated.types import Response
+from qtsurfer.api.client._generated.types import UNSET, Response, Unset
 from qtsurfer.api.client.models import (
+    Collection,
+    CollectionDeleted,
+    CollectionList,
+    DatasetCreated,
+    DatasetWithLinks,
     EquityCurveOutMode,
     GetLiveRunPaperEquityMeasure,
     InstrumentCatalogueResponse,
+    ListDatasetsResponse200,
     LivePaperEquityCurve,
+    LiveParamsUpdateResult,
 )
 
 from qtsurfer_sdk._errors import QTSAuthError
@@ -291,7 +298,8 @@ class AuthenticatedSession:
 
         return wf.update_live(self, run_id, request)
 
-    def update_live_params(self, run_id: str, request):
+    def update_live_params(self, run_id: str, request) -> LiveParamsUpdateResult | None:
+        """Update parameters; a waiting run can omit the effective time."""
         from qtsurfer_sdk import _workflows as wf
 
         return wf.update_live_params(self, run_id, request)
@@ -418,15 +426,23 @@ class AuthenticatedSession:
 
         return wf.cancel_sweep(self, **kwargs)
 
-    def create_dataset(self, **kwargs):
+    def create_dataset(
+        self, *, name: str, instrument: str, collection_id: str | None = None
+    ) -> DatasetCreated | None:
+        """Create a dataset and its first upload session."""
         from qtsurfer_sdk import _workflows as wf
 
-        return wf.create_dataset(self, **kwargs)
+        return wf.create_dataset(
+            self, name=name, instrument=instrument, collection_id=collection_id
+        )
 
-    def list_datasets(self, *, include_deleted: bool = False):
+    def list_datasets(
+        self, *, include_deleted: bool = False, collection_id: str | None = None
+    ) -> ListDatasetsResponse200 | None:
+        """Filter by collection id or by ``"none"`` for root datasets."""
         from qtsurfer_sdk import _workflows as wf
 
-        return wf.list_datasets(self, include_deleted=include_deleted)
+        return wf.list_datasets(self, include_deleted=include_deleted, collection_id=collection_id)
 
     def get_dataset(self, dataset_id: str):
         from qtsurfer_sdk import _workflows as wf
@@ -437,6 +453,50 @@ class AuthenticatedSession:
         from qtsurfer_sdk import _workflows as wf
 
         return wf.delete_dataset(self, dataset_id)
+
+    def create_collection(self, *, name: str, description: str | None = None) -> Collection | None:
+        """Create a dataset collection."""
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.create_collection(self, name=name, description=description)
+
+    def get_collections(self) -> CollectionList | None:
+        """List this account's dataset collections."""
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_collections(self)
+
+    def get_collection(self, collection_id: str) -> Collection | None:
+        """Read one dataset collection."""
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.get_collection(self, collection_id)
+
+    def update_collection(
+        self,
+        collection_id: str,
+        *,
+        name: str | Unset = UNSET,
+        description: str | None | Unset = UNSET,
+    ) -> Collection | None:
+        """Rename a collection or change its description. Pass None to clear the description."""
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.update_collection(self, collection_id, name=name, description=description)
+
+    def delete_collection(self, collection_id: str) -> CollectionDeleted | None:
+        """Delete a collection and return its datasets to the root."""
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.delete_collection(self, collection_id)
+
+    def move_dataset(
+        self, dataset_id: str, *, collection_id: str | None
+    ) -> DatasetWithLinks | None:
+        """Move a dataset into a collection. Pass None to return it to the root."""
+        from qtsurfer_sdk import _workflows as wf
+
+        return wf.move_dataset(self, dataset_id, collection_id=collection_id)
 
     def open_dataset_upload(self, dataset_id: str):
         """Open the dataset's pending upload session or its next version's session."""
